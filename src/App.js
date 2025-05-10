@@ -1,0 +1,62 @@
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import RegisterPage from "./pages/RegisterPage";
+import Navbar from "./components/Navbar";
+import Header from "./components/Header";
+import StatisticSection from "./components/StatisticSection";
+import Features from "./components/Features";
+import Contact from "./components/Contact";
+import LoginPage from "./pages/LoginPage";
+import ScrollToTop from "./components/ScrollToTop";
+import DashboardPage from "./pages/DashboardPage";
+import DashboardNavbar from "./components/DashboardNavbar";
+
+const HomePage = () => {
+  return (
+    <>
+      <Header />
+      <StatisticSection />
+      <Features />
+      <Contact />
+    </>
+  );
+};
+
+function App() {
+  return (
+    <div className="scroll-smooth">
+      <ScrollToTop />
+      <Routes>
+        {/* Trang chủ, chỉ hiển thị Navbar của trang giới thiệu web */}
+        <Route
+          path="/"
+          element={
+            <>
+              <Navbar />
+              <HomePage />
+            </>
+          }
+        />
+
+        {/* Trang đăng nhập */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Trang Dashboard, hiển thị DashboardNavbar */}
+        <Route
+          path="/dashboard"
+          element={
+            <>
+              <DashboardNavbar />
+              <DashboardPage />
+            </>
+          }
+        />
+
+        {/* Các trang khác */}
+        <Route path="/register" element={<RegisterPage />} />
+      </Routes>
+    </div>
+  );
+}
+
+export default App;
