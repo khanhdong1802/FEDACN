@@ -72,38 +72,41 @@ const FloatingButton = () => {
         />
       )}
       {/* Chỉ hiển thị nút nổi nếu không có modal nào mở */}
-      {!showIncomeModal && !showRecordModal && (
-        <div className="fixed bottom-6 right-6 flex flex-col items-center gap-2 z-50">
-          <div
-            className={`flex flex-col items-center gap-2 transition-all duration-300 ${
-              open ? "opacity-100 scale-100" : "opacity-0 scale-0"
-            } origin-bottom`}
-          >
-            {actions.map((action, index) => (
-              <button
-                key={index}
-                onClick={action.onClick}
-                className="bg-white text-purple-500 rounded-xl shadow-md px-3 py-2 w-24 flex flex-col items-center text-xs font-medium hover:bg-purple-100 hover:text-purple-700 transition-all duration-200"
-              >
-                {action.icon}
-                <span className="mt-1">{action.label}</span>
-              </button>
-            ))}
-          </div>
+      {!showIncomeModal &&
+        !showRecordModal &&
+        !showWithdrawModal &&
+        !showDebtModal && (
+          <div className="fixed bottom-6 right-6 flex flex-col items-center gap-2 z-50">
+            <div
+              className={`flex flex-col items-center gap-2 transition-all duration-300 ${
+                open ? "opacity-100 scale-100" : "opacity-0 scale-0"
+              } origin-bottom`}
+            >
+              {actions.map((action, index) => (
+                <button
+                  key={index}
+                  onClick={action.onClick}
+                  className="bg-white text-purple-500 rounded-xl shadow-md px-3 py-2 w-24 flex flex-col items-center text-xs font-medium hover:bg-purple-100 hover:text-purple-700 transition-all duration-200"
+                >
+                  {action.icon}
+                  <span className="mt-1">{action.label}</span>
+                </button>
+              ))}
+            </div>
 
-          <button
-            onClick={() => setOpen(!open)}
-            className="bg-purple-500 text-white text-3xl w-14 h-14 rounded-full shadow-lg hover:bg-purple-600 flex items-center justify-center transition-all"
-          >
-            <Plus
-              size={28}
-              className={`${
-                open ? "rotate-45" : "rotate-0"
-              } transition-transform duration-300`}
-            />
-          </button>
-        </div>
-      )}
+            <button
+              onClick={() => setOpen(!open)}
+              className="bg-purple-500 text-white text-3xl w-14 h-14 rounded-full shadow-lg hover:bg-purple-600 flex items-center justify-center transition-all"
+            >
+              <Plus
+                size={28}
+                className={`${
+                  open ? "rotate-45" : "rotate-0"
+                } transition-transform duration-300`}
+              />
+            </button>
+          </div>
+        )}
     </>
   );
 };

@@ -18,11 +18,13 @@ const DashboardNavbar = () => {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
 
+      const userId = parsedUser._id; // Lấy userId từ thông tin người dùng đã lưu
+
       // Gọi API để lấy tổng thu nhập
-      fetch(`http://localhost:3000/api/income/total/${parsedUser._id}`)
+      fetch(`http://localhost:3000/api/auth/Income/total/${userId}`)
         .then((res) => res.json())
         .then((data) => {
-          setTotalIncome(data.total || 0); // ✅ cập nhật số dư từ API
+          setTotalIncome(data.total || 0); // ✅ Cập nhật số dư từ API
         })
         .catch((err) => {
           console.error("Lỗi khi lấy tổng thu nhập:", err);

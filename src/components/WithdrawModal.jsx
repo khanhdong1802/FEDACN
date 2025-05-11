@@ -1,19 +1,70 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import axios from "axios";
 
-const WithdrawModal = ({ onClose }) => {
+const WithdrawModal = ({ onClose, userId }) => {
   const [amount, setAmount] = useState("");
   const [source, setSource] = useState("");
   const [note, setNote] = useState("");
+  const [balance, setBalance] = useState(0); // Lưu số dư của người dùng
 
-  const handleSubmit = () => {
+  // Gọi hàm fetchBalance khi userId thay đổi
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        if (!userId) {
+          console.warn("⚠️ Không có userId được truyền vào!");
+          return;
+        }
+
+        const url = `http://localhost:3000/api/auth/balance/${userId}`;
+        console.log("📡 Gọi API:", url);
+        const res = await fetch(url);
+
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("❌ Lỗi khi gọi API:", res.status, text);
+          return;
+        }
+
+        const data = await res.json();
+        console.log("📦 Dữ liệu trả về từ API:", data);
+        setBalance(data?.balance || 0);
+      } catch (err) {
+        console.error("Lỗi khi lấy số dư:", err);
+      }
+    };
+
+    fetchBalance();
+  }, [userId]);
+
+  const handleSubmit = async () => {
     if (!amount || !source) {
       alert("Vui lòng nhập đầy đủ thông tin");
       return;
     }
 
-    alert(`💸 Rút ${amount} đ từ: ${source}\nGhi chú: ${note}`);
-    onClose(); // đóng modal sau khi "lưu"
+    if (amount > balance) {
+      alert("Số tiền rút vượt quá số dư hiện tại");
+      return;
+    }
+
+    try {
+      await axios.post("http://localhost:3000/api/auth/Withdraw", {
+        user_id: userId,
+        amount,
+        source,
+        note,
+      });
+
+      // Sau khi rút tiền, gọi lại fetchBalance để cập nhật lại số dư mới
+      setBalance(balance - Number(amount)); // Cập nhật số dư sau khi rút tiền
+      alert(`💸 Rút ${amount} đ từ: ${source}\nGhi chú: ${note}`);
+      onClose(); // Đóng modal sau khi thực hiện xong
+    } catch (error) {
+      console.error("Lỗi khi rút tiền:", error);
+      alert("Lỗi khi thực hiện giao dịch rút tiền.");
+    }
   };
 
   return (
@@ -35,6 +86,11 @@ const WithdrawModal = ({ onClose }) => {
 
         {/* Form rút tiền */}
         <div className="flex flex-col gap-4">
+          {/* Hiển thị số dư hiện tại */}
+          <div className="text-sm text-gray-600">
+            <strong>Số dư hiện tại:</strong> {balance} đ
+          </div>
+
           <input
             type="number"
             placeholder="Số tiền"

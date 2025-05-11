@@ -31,7 +31,7 @@ const IncomeModal = ({ onClose }) => {
         },
         body: JSON.stringify({
           user_id: user?._id, // Dùng _id từ user trong localStorage
-          amount,
+          amount: Number(amount), // Chuyển đổi số tiền thành kiểu Number
           source,
           received_date: date, // Ngày nhận tiền
           note,
