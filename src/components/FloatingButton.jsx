@@ -19,6 +19,7 @@ const FloatingButton = () => {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false); // modal rút tiền
   const [showDebtModal, setShowDebtModal] = useState(false); // modal nợ
   const actions = [
+    
     {
       icon: <RotateCcw size={20} />,
       label: "Trả nợ",
@@ -41,6 +42,9 @@ const FloatingButton = () => {
     },
   ];
 
+  const user = JSON.parse(localStorage.getItem("user"));
+  const userId = user?._id;
+
   return (
     <>
       {/* Modal ghi chép */}
@@ -51,7 +55,7 @@ const FloatingButton = () => {
       {/* Form nạp tiền */}
       {showIncomeModal && (
         <IncomeModal
-          userId={localStorage.getItem("user_id")}
+          userId={userId}
           onClose={() => setShowIncomeModal(false)}
         />
       )}
@@ -59,17 +63,14 @@ const FloatingButton = () => {
       {/* Form rút tiền */}
       {showWithdrawModal && (
         <WithdrawModal
-          userId={localStorage.getItem("user_id")}
+          userId={userId}
           onClose={() => setShowWithdrawModal(false)}
         />
       )}
 
       {/* Form tra nợ */}
       {showDebtModal && (
-        <DebtModal
-          userId={localStorage.getItem("user_id")}
-          onClose={() => setShowDebtModal(false)}
-        />
+        <DebtModal userId={userId} onClose={() => setShowDebtModal(false)} />
       )}
       {/* Chỉ hiển thị nút nổi nếu không có modal nào mở */}
       {!showIncomeModal &&

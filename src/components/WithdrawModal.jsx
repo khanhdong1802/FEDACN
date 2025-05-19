@@ -6,7 +6,7 @@ const WithdrawModal = ({ onClose, userId }) => {
   const [amount, setAmount] = useState("");
   const [source, setSource] = useState("");
   const [note, setNote] = useState("");
-  const [balance, setBalance] = useState(0); // Lưu số dư của người dùng
+  const [balance, setBalance] = useState(0);
 
   // Gọi hàm fetchBalance khi userId thay đổi
   useEffect(() => {
@@ -44,23 +44,24 @@ const WithdrawModal = ({ onClose, userId }) => {
       return;
     }
 
-    if (amount > balance) {
+    if (Number(amount) > balance) {
       alert("Số tiền rút vượt quá số dư hiện tại");
       return;
     }
 
+    console.log("Gửi rút tiền với userId:", userId, "amount:", amount);
+
     try {
       await axios.post("http://localhost:3000/api/auth/Withdraw", {
         user_id: userId,
-        amount,
+        amount: Number(amount), // Đảm bảo gửi kiểu số
         source,
         note,
       });
 
-      // Sau khi rút tiền, gọi lại fetchBalance để cập nhật lại số dư mới
-      setBalance(balance - Number(amount)); // Cập nhật số dư sau khi rút tiền
+      setBalance(balance - Number(amount));
       alert(`💸 Rút ${amount} đ từ: ${source}\nGhi chú: ${note}`);
-      onClose(); // Đóng modal sau khi thực hiện xong
+      onClose();
     } catch (error) {
       console.error("Lỗi khi rút tiền:", error);
       alert("Lỗi khi thực hiện giao dịch rút tiền.");
