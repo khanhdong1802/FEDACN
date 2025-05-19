@@ -151,7 +151,7 @@ const RecordModal = ({ onClose }) => {
         {/* Các trường ghi chép */}
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center border-b py-2">
-            <span className="text-gray-500">Người chi</span>
+            <span className="text-gray-500">Phương Thức</span>
             <button className="flex items-center gap-1 text-sm text-gray-700">
               Sử dụng tiền quỹ phòng <ChevronDown size={16} />
             </button>

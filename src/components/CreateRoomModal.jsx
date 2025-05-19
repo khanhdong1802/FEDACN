@@ -3,13 +3,46 @@ import React, { useState } from "react";
 export default function CreateRoomModal({ isOpen, onClose }) {
   const [roomName, setRoomName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Tạo phòng:", roomName, memberEmail);
-    onClose();
+
+    try {
+      const storedUser = localStorage.getItem("user");
+      if (!storedUser) throw new Error("Không tìm thấy người dùng");
+
+      const user = JSON.parse(storedUser);
+
+      const response = await fetch("http://localhost:3000/api/auth/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: roomName,
+          description: "",
+          created_by: user._id,
+          members: [], // hoặc thêm userId từ email nếu bạn lookup
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("❌ Tạo nhóm thất bại:", data);
+        alert("❌ Tạo nhóm thất bại: " + data.message);
+      } else {
+        alert("✅ Nhóm đã được tạo thành công!");
+        onClose();
+      }
+    } catch (error) {
+      console.error("❌ Lỗi:", error);
+      alert("❌ Đã có lỗi xảy ra khi gửi yêu cầu.");
+    }
+    setLoading(false);
   };
 
   return (
@@ -54,28 +87,12 @@ export default function CreateRoomModal({ isOpen, onClose }) {
             />
           </div>
 
-          {/* Gợi ý giả */}
-          <div>
-            <p className="text-sm text-gray-600 mb-2">Gợi ý</p>
-            <div className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gray-200 rounded-full" />
-                <div>
-                  <p className="text-sm font-medium">Quỳnh Bùi Như</p>
-                  <p className="text-xs text-gray-500">
-                    nhuquynh130895@gmail.com
-                  </p>
-                </div>
-              </div>
-              <input type="checkbox" className="form-checkbox" />
-            </div>
-          </div>
-
           <button
             type="submit"
+            disabled={loading}
             className="w-full bg-indigo-500 hover:bg-indigo-600 text-white py-2 px-4 rounded-md transition"
           >
-            Lưu
+            {loading ? "Đang lưu..." : "Lưu"}
           </button>
         </form>
       </div>

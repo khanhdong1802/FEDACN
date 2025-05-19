@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import avatar from "../assets/avatar.jpg";
 import CreateRoomModal from "./CreateRoomModal";
+
 const DashboardNavbar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
