@@ -1,36 +1,49 @@
-import React, { useEffect, useState } from "react";
-import { Bell } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Bell,
+  Home,
+  LogOut,
+  Plus,
+  BarChart,
+  QrCode,
+  History,
+  Menu,
+  X,
+} from "lucide-react";
 import avatar from "../assets/avatar.jpg";
-
+import CreateRoomModal from "./CreateRoomModal";
 const DashboardNavbar = () => {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const [totalIncome, setTotalIncome] = useState(0); // Thêm state số dư
+  const [totalIncome, setTotalIncome] = useState(0);
+  const sidebarRef = useRef();
+  const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  const toggleMenu = () => {
-    setMenuOpen(!menuOpen);
-  };
+  // Đóng sidebar khi click bên ngoài
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(e.target)) {
+        setSidebarOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  // Lấy thông tin user từ localStorage và gọi API để lấy tổng thu nhập
+  // Lấy thông tin người dùng và tổng thu nhập
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
 
-      const userId = parsedUser._id; // Lấy userId từ thông tin người dùng đã lưu
-
-      // Gọi API để lấy tổng thu nhập
-      fetch(`http://localhost:3000/api/auth/Income/total/${userId}`)
+      fetch(`http://localhost:3000/api/auth/Income/total/${parsedUser._id}`)
         .then((res) => res.json())
-        .then((data) => {
-          setTotalIncome(data.total || 0); // ✅ Cập nhật số dư từ API
-        })
-        .catch((err) => {
-          console.error("Lỗi khi lấy tổng thu nhập:", err);
-        });
+        .then((data) => setTotalIncome(data.total || 0))
+        .catch((err) => console.error("Lỗi khi lấy tổng thu nhập:", err));
     }
-  }, []); // useEffect chạy lại khi `user` thay đổi
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -39,68 +52,90 @@ const DashboardNavbar = () => {
   };
 
   return (
-    <div className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-4 pb-6 rounded-b-3xl shadow-md relative">
-      <div className="flex justify-between items-center">
-        <div
-          className="flex items-center gap-4 transition-transform duration-300"
-          style={{
-            transform: menuOpen ? "translateX(180px)" : "translateX(0)",
-          }}
-        >
-          <button
-            className="text-white text-2xl font-bold"
-            onClick={toggleMenu}
-          >
-            ≡
-          </button>
+    <>
+      {showCreateRoomModal && (
+        <CreateRoomModal
+          isOpen={showCreateRoomModal}
+          onClose={() => setShowCreateRoomModal(false)}
+        />
+      )}
 
-          <img
-            src={avatar}
-            alt="avatar"
-            className="w-12 h-12 rounded-full border-2 border-white"
-          />
-
-          <div>
-            <h2 className="font-semibold text-sm">
-              {user?.name || "Người dùng"} {/* Hiển thị name nếu có */}
-            </h2>
-            <p className="text-xs text-white">
-              Đã chi: 0 đ - Số dư: {totalIncome} đ
-            </p>
+      <div className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-4 pb-6 rounded-b-3xl shadow-md relative">
+        <div className="flex justify-between items-center">
+          {/* Nút menu + avatar */}
+          <div className="flex items-center gap-4">
+            <button onClick={toggleSidebar}>
+              <Menu size={26} className="text-white" />
+            </button>
+            <img
+              src={avatar}
+              alt="avatar"
+              className="w-12 h-12 rounded-full border-2 border-white"
+            />
+            <div>
+              <h2 className="font-semibold text-sm">
+                {user?.name || "Người dùng"}
+              </h2>
+              <p className="text-xs text-white">
+                Đã chi: 0 đ - Số dư: {totalIncome.toLocaleString()} đ
+              </p>
+            </div>
           </div>
+
+          <Bell size={22} className="text-white cursor-pointer" />
         </div>
 
-        <Bell size={22} className="text-white" />
-      </div>
+        {/* Sidebar trượt từ trái */}
+        <div
+          className={`fixed top-0 left-0 h-full w-64 bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg z-50 transform transition-transform duration-300 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+          ref={sidebarRef}
+        >
+          <div className="flex justify-between items-center px-4 py-4 border-b">
+            <h2 className="text-lg font-bold">Menu</h2>
+            <button onClick={toggleSidebar}>
+              <X size={20} />
+            </button>
+          </div>
+          <ul className="flex flex-col p-4 text-sm gap-2">
+            <li className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 cursor-pointer transition-colors duration-200">
+              <Home size={16} /> Trang chủ
+            </li>
 
-      {menuOpen && (
-        <div className="absolute left-0 top-16 bg-gradient-to-r from-indigo-500 to-purple-500 text-white w-44 p-4 rounded-lg shadow-md transition-all ease-in-out z-10">
-          <ul className="flex flex-col gap-3">
-            <li className="py-2 px-2 hover:bg-white/10 rounded cursor-pointer">
-              Home
+            <li
+              onClick={() => setShowCreateRoomModal(true)}
+              className="py-2 px-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+            >
+              <Plus size={16} /> Thêm phòng mới
             </li>
-            <li className="py-2 px-2 hover:bg-white/10 rounded cursor-pointer">
-              Thêm phòng mới
+
+            <li className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 cursor-pointer transition-colors duration-200">
+              <QrCode size={16} /> QR Code
             </li>
-            <li className="py-2 px-2 hover:bg-white/10 rounded cursor-pointer">
-              QR Code
+            <li className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 cursor-pointer transition-colors duration-200">
+              <History size={16} /> Lịch sử chi tiêu
             </li>
-            <li className="py-2 px-2 hover:bg-white/10 rounded cursor-pointer">
-              Lịch sử chi tiêu
-            </li>
-            <li className="py-2 px-2 hover:bg-white/10 rounded cursor-pointer">
-              Thống Kê
+            <li className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 cursor-pointer transition-colors duration-200">
+              <BarChart size={16} /> Thống kê
             </li>
             <li
               onClick={handleLogout}
-              className="py-2 px-2 hover:bg-white/10 rounded cursor-pointer"
+              className="flex items-center gap-3 p-2 rounded hover:bg-red-100 text-red-600 cursor-pointer"
             >
-              Đăng xuất
+              <LogOut size={16} /> Đăng xuất
             </li>
           </ul>
         </div>
-      )}
-    </div>
+
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+            onClick={toggleSidebar}
+          ></div>
+        )}
+      </div>
+    </>
   );
 };
 

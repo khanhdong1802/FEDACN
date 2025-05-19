@@ -6,7 +6,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
+  const [showPassword, setShowPassword] = useState(false);
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -57,15 +57,24 @@ export default function LoginPage() {
             <label className="block text-sm mb-1" htmlFor="password">
               Mật khẩu
             </label>
-            <input
-              type="password"
-              id="password"
-              className="w-full px-4 py-2 rounded bg-gray-800 text-white focus:outline-none"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                className="w-full px-4 py-2 pr-10 rounded bg-gray-800 text-white focus:outline-none"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-2 text-sm text-gray-400 hover:text-white"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? "Ẩn" : "Hiện"}
+              </button>
+            </div>
           </div>
 
           <button

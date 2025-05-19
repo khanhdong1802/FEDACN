@@ -10,6 +10,7 @@ export default function RegisterPage() {
   });
 
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
 
   function handleChange(e) {
     setForm({ ...form, [e.target.id]: e.target.value });
@@ -77,15 +78,24 @@ export default function RegisterPage() {
             <label className="block text-sm mb-1" htmlFor="password">
               Mật khẩu
             </label>
-            <input
-              type="password"
-              id="password"
-              value={form.password}
-              className="w-full px-4 py-2 rounded bg-gray-800 text-white focus:outline-none"
-              placeholder="••••••••"
-              onChange={handleChange}
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                value={form.password}
+                className="w-full px-4 py-2 pr-10 rounded bg-gray-800 text-white focus:outline-none"
+                placeholder="••••••••"
+                onChange={handleChange}
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-2 text-sm text-gray-400 hover:text-white"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? "Ẩn" : "Hiện"}
+              </button>
+            </div>
           </div>
 
           <button
