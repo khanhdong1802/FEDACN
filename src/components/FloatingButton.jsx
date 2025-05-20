@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  Wallet,
   Plus,
   RotateCcw,
   ArrowDownCircle,
@@ -11,6 +12,7 @@ import RecordModal from "./RecordModal";
 import IncomeModal from "./IncomeModal";
 import WithdrawModal from "./WithdrawModal";
 import DebtModal from "./DebtModal";
+import SpendingLimitModal from "./SpendingLimitModal";
 const FloatingButton = () => {
   // điều khiển modal
   const [open, setOpen] = useState(false);
@@ -18,8 +20,14 @@ const FloatingButton = () => {
   const [showIncomeModal, setShowIncomeModal] = useState(false); // modal nạp tiền
   const [showWithdrawModal, setShowWithdrawModal] = useState(false); // modal rút tiền
   const [showDebtModal, setShowDebtModal] = useState(false); // modal nợ
+  const [showSpendingLimitModal, setShowSpendingLimitModal] = useState(false); // modal hạn mức chi tiêu
   const actions = [
-    
+    {
+      icon: <Wallet size={20} />,
+      label: "Hạn mức",
+      onClick: () => setShowSpendingLimitModal(true), // mở modal
+    },
+
     {
       icon: <RotateCcw size={20} />,
       label: "Trả nợ",
@@ -47,6 +55,14 @@ const FloatingButton = () => {
 
   return (
     <>
+      {/* Modal hạn mức chi tiêu */}
+      {showSpendingLimitModal && (
+        <SpendingLimitModal
+          userId={userId}
+          onClose={() => setShowSpendingLimitModal(false)}
+        />
+      )}
+
       {/* Modal ghi chép */}
       {showRecordModal && (
         <RecordModal onClose={() => setShowRecordModal(false)} />

@@ -17,6 +17,8 @@ const DashboardNavbar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [totalIncome, setTotalIncome] = useState(0);
+  const [spendingLimit, setSpendingLimit] = useState(0);
+  const [months, setMonths] = useState(1);
   const sidebarRef = useRef();
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -43,6 +45,17 @@ const DashboardNavbar = () => {
         .then((res) => res.json())
         .then((data) => setTotalIncome(data.total || 0))
         .catch((err) => console.error("Lỗi khi lấy tổng thu nhập:", err));
+
+      // Đổi endpoint lấy hạn mức active
+      fetch(
+        `http://localhost:3000/api/auth/spending-limits/${parsedUser._id}/current`
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          setSpendingLimit(data?.amount || 0);
+          setMonths(data?.months || 1); // Lưu số tháng từ CSDL
+        })
+        .catch((err) => console.error("Lỗi khi lấy hạn mức:", err));
     }
   }, []);
 
@@ -78,7 +91,14 @@ const DashboardNavbar = () => {
                 {user?.name || "Người dùng"}
               </h2>
               <p className="text-xs text-white">
-                Đã chi: 0 đ - Số dư: {totalIncome.toLocaleString()} đ
+                Đã chi: 0 đ
+                {spendingLimit > 0 && (
+                  <>
+                    {" "}
+                    /{spendingLimit.toLocaleString()} đ /{months} tháng
+                  </>
+                )}{" "}
+                - Số dư: {totalIncome.toLocaleString()} đ
               </p>
             </div>
           </div>

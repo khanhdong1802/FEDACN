@@ -1,14 +1,49 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 export default function CreateRoomModal({ isOpen, onClose }) {
   const [roomName, setRoomName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
+  const [emailSuggestions, setEmailSuggestions] = useState([]);
+  const [selectedMemberIds, setSelectedMemberIds] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Gợi ý email
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (!memberEmail.trim()) {
+        setEmailSuggestions([]);
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `http://localhost:3000/api/auth/search?q=${memberEmail}`
+        );
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setEmailSuggestions(data);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tìm kiếm email:", err);
+      }
+    };
+
+    fetchSuggestions();
+  }, [memberEmail]);
 
   if (!isOpen) return null;
 
+  const toggleMemberSelection = (userId) => {
+    setSelectedMemberIds((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
       const storedUser = localStorage.getItem("user");
@@ -25,7 +60,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
           name: roomName,
           description: "",
           created_by: user._id,
-          members: [], // hoặc thêm userId từ email nếu bạn lookup
+          members: selectedMemberIds,
         }),
       });
 
@@ -73,19 +108,62 @@ export default function CreateRoomModal({ isOpen, onClose }) {
               required
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Thành viên
+              Tìm email thành viên
             </label>
             <input
               type="email"
               value={memberEmail}
               onChange={(e) => setMemberEmail(e.target.value)}
               className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-md focus:outline-none"
-              placeholder="Email..."
+              placeholder="Nhập email..."
             />
           </div>
+          {/* Gợi ý thành viên */}
+          {emailSuggestions.length > 0 && (
+            <div className="mt-2">
+              <p className="text-sm text-gray-600 mb-2">Gợi ý</p>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {emailSuggestions.map((user) => (
+                  <button
+                    key={user._id}
+                    onClick={() => {
+                      setMemberEmail(user.email);
+                      if (!selectedMemberIds.includes(user._id)) {
+                        toggleMemberSelection(user._id);
+                      }
+                      setEmailSuggestions([]); // ẩn gợi ý sau khi chọn
+                    }}
+                    className="w-full flex items-center justify-between bg-gray-100 px-3 py-2 rounded-md hover:bg-gray-200 transition"
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      {/* Avatar chữ cái đầu */}
+                      <div className="w-10 h-10 bg-indigo-500 text-white rounded-full flex items-center justify-center font-semibold text-sm">
+                        {user.name?.charAt(0).toUpperCase() || "?"}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-gray-800">
+                          {user.name || "Không tên"}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {user.email}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <input
+                        type="checkbox"
+                        checked={selectedMemberIds.includes(user._id)}
+                        readOnly
+                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded"
+                      />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"
