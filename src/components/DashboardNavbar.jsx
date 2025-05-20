@@ -19,6 +19,7 @@ const DashboardNavbar = () => {
   const [totalIncome, setTotalIncome] = useState(0);
   const [spendingLimit, setSpendingLimit] = useState(0);
   const [months, setMonths] = useState(1);
+  const [rooms, setRooms] = useState([]);
   const sidebarRef = useRef();
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -56,6 +57,14 @@ const DashboardNavbar = () => {
           setMonths(data?.months || 1); // Lưu số tháng từ CSDL
         })
         .catch((err) => console.error("Lỗi khi lấy hạn mức:", err));
+
+      // Lấy danh sách phòng
+      fetch(`http://localhost:3000/api/auth/groups?userId=${parsedUser._id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setRooms(data.groups || []);
+        })
+        .catch((err) => console.error("Lỗi khi lấy danh sách phòng:", err));
     }
   }, []);
 
@@ -123,6 +132,16 @@ const DashboardNavbar = () => {
             <li className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 cursor-pointer transition-colors duration-200">
               <Home size={16} /> Trang chủ
             </li>
+
+            {/* Danh sách phòng */}
+            {rooms.map((room) => (
+              <li
+                key={room._id}
+                className="flex items-center gap-3 p-2 rounded hover:bg-purple-100 cursor-pointer transition-colors duration-200"
+              >
+                <span className="font-semibold">{room.name}</span>
+              </li>
+            ))}
 
             <li
               onClick={() => setShowCreateRoomModal(true)}
