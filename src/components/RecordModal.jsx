@@ -2,11 +2,17 @@ import React, { useState } from "react";
 import { X, ChevronDown } from "lucide-react";
 import CategoryCard from "./CategoryCard";
 import avatar from "../assets/avatar.jpg";
+import axios from "axios";
+import { useEffect } from "react";
 
-const RecordModal = ({ onClose }) => {
+const RecordModal = ({ onClose, onWithdrawSuccess }) => {
   const [selectAll, setSelectAll] = useState(true);
-  const [selectedTab, setSelectedTab] = useState("user"); // "user" or "category"
+  const [selectedTab, setSelectedTab] = useState("user");
   const [selectedUsers, setSelectedUsers] = useState([]);
+  const [amount, setAmount] = useState(""); // Thêm state số tiền
+  const [description, setDescription] = useState(""); // Thêm state mô tả
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [category, setCategory] = useState(""); // Thêm state danh mục
 
   const users = [
     {
@@ -16,20 +22,19 @@ const RecordModal = ({ onClose }) => {
     },
   ];
 
-  const categories = [
-    { icon: "🏠", label: "Tiền nhà" },
-    { icon: "🍱", label: "Thức ăn" },
-    { icon: "🎓", label: "Học phí" },
-    { icon: "🚌", label: "Đi lại" },
-    { icon: "📱", label: "Đồ dùng" },
-    { icon: "💤", label: "Tiền ngủ" },
-  ];
+  const [categories, setCategories] = useState([]);
 
-  const handleCategoryClick = (label) => {
-    alert(`Chọn danh mục: ${label}`);
+  useEffect(() => {
+    axios
+      .get("http://localhost:3000/api/auth/categories")
+      .then((res) => setCategories(res.data))
+      .catch(() => setCategories([]));
+  }, []);
+
+  const handleCategoryClick = (id) => {
+    setCategory(id);
   };
 
-  // Cập nhật chọn tất cả
   const toggleSelectAll = () => {
     if (selectAll) {
       setSelectedUsers([]);
@@ -48,6 +53,45 @@ const RecordModal = ({ onClose }) => {
     setSelectAll(newSelected.length === users.length);
   };
 
+  // Hàm xử lý rút tiền
+  const handleWithdraw = async () => {
+    if (!amount || Number(amount) <= 0) {
+      alert("Vui lòng nhập số tiền hợp lệ!");
+      return;
+    }
+    // Lấy userId từ localStorage (hoặc props nếu có)
+    const user = JSON.parse(localStorage.getItem("user"));
+    const userId = user?._id;
+    if (!userId) {
+      alert("Không tìm thấy userId!");
+      return;
+    }
+
+    const selectedCategory = categories.find((cat) => cat._id === category);
+    const categoryName = selectedCategory ? selectedCategory.name : "";
+    console.log("Dữ liệu gửi lên:", {
+      user_id: userId,
+      amount: Number(amount),
+      category_id: category,
+      source: categoryName, 
+      note: description,
+    });
+    try {
+      await axios.post("http://localhost:3000/api/auth/Withdraw", {
+        user_id: userId,
+        amount: Number(amount),
+        category_id: category,
+        source: categoryName, 
+        note: description,
+      });
+      alert("Rút tiền thành công!");
+      if (onWithdrawSuccess) onWithdrawSuccess();
+      onClose();
+    } catch (err) {
+      alert("Rút tiền thất bại!");
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50">
       <div className="bg-white w-full max-w-md rounded-t-2xl p-4 max-h-[90vh] overflow-y-auto">
@@ -57,7 +101,12 @@ const RecordModal = ({ onClose }) => {
             <X size={24} />
           </button>
           <h1 className="text-lg font-medium">Ghi chép</h1>
-          <button className="text-purple-600 font-medium">Lưu</button>
+          <button
+            className="text-purple-600 font-medium"
+            onClick={handleWithdraw}
+          >
+            Lưu
+          </button>
         </div>
 
         {/* Tab buttons */}
@@ -90,8 +139,6 @@ const RecordModal = ({ onClose }) => {
             <h2 className="font-semibold text-sm text-gray-600 mb-2">
               Người sử dụng
             </h2>
-
-            {/* Danh sách user có checkbox */}
             <div className="flex flex-col gap-3">
               {users.map((user, idx) => (
                 <div key={idx} className="flex items-center gap-3">
@@ -113,8 +160,6 @@ const RecordModal = ({ onClose }) => {
                 </div>
               ))}
             </div>
-
-            {/* Chọn tất cả */}
             <div className="flex items-center justify-between mt-4">
               <span>Chọn tất cả</span>
               <label className="inline-flex items-center cursor-pointer">
@@ -136,12 +181,13 @@ const RecordModal = ({ onClose }) => {
               Danh mục
             </h2>
             <div className="flex gap-3 overflow-x-auto pb-2">
-              {categories.map((cat, idx) => (
+              {categories.map((cat) => (
                 <CategoryCard
-                  key={idx}
+                  key={cat._id}
                   icon={cat.icon}
-                  label={cat.label}
-                  onClick={() => handleCategoryClick(cat.label)}
+                  label={cat.name}
+                  onClick={() => handleCategoryClick(cat._id)}
+                  selected={category === cat._id}
                 />
               ))}
             </div>
@@ -159,7 +205,18 @@ const RecordModal = ({ onClose }) => {
 
           <div className="flex justify-between items-center border-b py-2">
             <span className="text-gray-500">Số tiền</span>
-            <span className="text-gray-700">0 đ</span>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                className="text-gray-700 outline-none text-right w-40 px-0 border-none bg-transparent"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Nhập số tiền"
+                min={0}
+                style={{ textAlign: "right" }}
+              />
+              <span className="text-gray-700">đ</span>
+            </div>
           </div>
 
           <div className="flex justify-between items-center border-b py-2">
@@ -167,7 +224,8 @@ const RecordModal = ({ onClose }) => {
             <input
               type="date"
               className="text-gray-700 outline-none"
-              defaultValue={new Date().toISOString().split("T")[0]}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
             />
           </div>
 
@@ -176,6 +234,8 @@ const RecordModal = ({ onClose }) => {
               rows={2}
               className="w-full text-sm text-gray-700 outline-none"
               placeholder="Mô tả"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
           </div>
         </div>
