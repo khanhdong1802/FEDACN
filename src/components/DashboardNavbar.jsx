@@ -10,6 +10,7 @@ import {
   History,
   Menu,
   X,
+  Settings, // Thêm dòng này
 } from "lucide-react";
 import avatar from "../assets/avatar.jpg";
 import CreateRoomModal from "./CreateRoomModal";
@@ -171,6 +172,18 @@ const DashboardNavbar = () => {
             <li className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 cursor-pointer transition-colors duration-200">
               <BarChart size={16} /> Thống kê
             </li>
+            
+            {/* Thêm mục Cài đặt ở đây */}
+            <li
+              className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 cursor-pointer transition-colors duration-200"
+              onClick={() => {
+                setSidebarOpen(false);
+                navigate("/dashboard/settings");
+              }}
+            >
+              <Settings size={16} /> Cài đặt
+            </li>
+
             <li
               onClick={handleLogout}
               className="flex items-center gap-3 p-2 rounded hover:bg-red-100 text-red-600 cursor-pointer"
