@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Users,
   Bell,
   Home,
   LogOut,
@@ -12,7 +13,7 @@ import {
 } from "lucide-react";
 import avatar from "../assets/avatar.jpg";
 import CreateRoomModal from "./CreateRoomModal";
-
+import { useNavigate } from "react-router-dom";
 const DashboardNavbar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -23,7 +24,7 @@ const DashboardNavbar = () => {
   const sidebarRef = useRef();
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-
+  const navigate = useNavigate();
   // Đóng sidebar khi click bên ngoài
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -129,7 +130,13 @@ const DashboardNavbar = () => {
             </button>
           </div>
           <ul className="flex flex-col p-4 text-sm gap-2">
-            <li className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 cursor-pointer transition-colors duration-200">
+            <li
+              className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 cursor-pointer transition-colors duration-200"
+              onClick={() => {
+                setSidebarOpen(false);
+                navigate("/dashboard");
+              }}
+            >
               <Home size={16} /> Trang chủ
             </li>
 
@@ -138,7 +145,12 @@ const DashboardNavbar = () => {
               <li
                 key={room._id}
                 className="flex items-center gap-3 p-2 rounded hover:bg-purple-100 cursor-pointer transition-colors duration-200"
+                onClick={() => {
+                  setSidebarOpen(false);
+                  navigate(`/dashboard/${room._id}`);
+                }}
               >
+                <Users size={16} className="text-white" />
                 <span className="font-semibold">{room.name}</span>
               </li>
             ))}

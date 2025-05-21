@@ -9,6 +9,7 @@ import Contact from "./components/Contact";
 import LoginPage from "./pages/LoginPage";
 import ScrollToTop from "./components/ScrollToTop";
 import DashboardPage from "./pages/DashboardPage";
+import GroupDashboardPage from "./pages/GroupDashboardPage";
 import DashboardNavbar from "./components/DashboardNavbar";
 
 const HomePage = () => {
@@ -37,10 +38,8 @@ function App() {
             </>
           }
         />
-
         {/* Trang đăng nhập */}
         <Route path="/login" element={<LoginPage />} />
-
         {/* Trang Dashboard, hiển thị DashboardNavbar */}
         <Route
           path="/dashboard"
@@ -51,7 +50,16 @@ function App() {
             </>
           }
         />
-
+        {/* Trang Dashboar cho từng nhóm */}
+        <Route
+          path="/dashboard/:id"
+          element={
+            <>
+              <DashboardNavbar />
+              <GroupDashboardPage />
+            </>
+          }
+        />
         {/* Các trang khác */}
         <Route path="/register" element={<RegisterPage />} />
       </Routes>

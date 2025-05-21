@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-
+import { useNavigate } from "react-router-dom";
 export default function CreateRoomModal({ isOpen, onClose }) {
   const [roomName, setRoomName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [emailSuggestions, setEmailSuggestions] = useState([]);
   const [selectedMemberIds, setSelectedMemberIds] = useState([]);
   const [loading, setLoading] = useState(false);
-
+  const navigate = useNavigate();
   // Gợi ý email
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -60,7 +60,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
           name: roomName,
           description: "",
           created_by: user._id,
-          members: selectedMemberIds,
+          memberEmail: memberEmail || undefined, // chỉ gửi nếu có nhập email
         }),
       });
 
@@ -72,6 +72,8 @@ export default function CreateRoomModal({ isOpen, onClose }) {
       } else {
         alert("✅ Nhóm đã được tạo thành công!");
         onClose();
+        // Chuyển hướng sang DashboardPage của nhóm mới
+        navigate(`/dashboard/${data.group._id}`);
       }
     } catch (error) {
       console.error("❌ Lỗi:", error);
