@@ -10,6 +10,7 @@ export default function GroupDashboardPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!groupId || groupId === "settings") return; // Không fetch nếu là settings
     const fetchGroupData = async () => {
       try {
         const resGroup = await fetch(

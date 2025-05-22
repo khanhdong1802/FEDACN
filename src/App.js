@@ -11,6 +11,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import DashboardPage from "./pages/DashboardPage";
 import GroupDashboardPage from "./pages/GroupDashboardPage";
 import DashboardNavbar from "./components/DashboardNavbar";
+import SettingsPage from "./pages/SettingsPage";
 
 const HomePage = () => {
   return (
@@ -47,6 +48,15 @@ function App() {
             <>
               <DashboardNavbar />
               <DashboardPage />
+            </>
+          }
+        />
+        <Route
+          path="/dashboard/settings"
+          element={
+            <>
+              <DashboardNavbar />
+              <SettingsPage />
             </>
           }
         />
