@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import CategoryCard from "../components/CategoryCard";
-import FloatingButton from "../components/FloatingButton";
 
 export default function GroupDashboardPage() {
   const { id: groupId } = useParams();
@@ -77,8 +76,6 @@ export default function GroupDashboardPage() {
           </p>
         </div>
       </div>
-
-      <FloatingButton groupId={groupId} />
     </div>
   );
 }

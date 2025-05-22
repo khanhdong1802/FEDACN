@@ -1,3 +1,4 @@
+import FloatingButton from "./FloatingButton";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Users,
@@ -25,6 +26,9 @@ const DashboardNavbar = () => {
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const navigate = useNavigate();
+  const [showNotification, setShowNotification] = useState(false);
+  const bellRef = useRef();
+  const [notifications, setNotifications] = useState([]);
   // Đóng sidebar khi click bên ngoài
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -83,6 +87,20 @@ const DashboardNavbar = () => {
           onClose={() => setShowCreateRoomModal(false)}
         />
       )}
+      <FloatingButton
+        onIncomeSuccess={(msg, newTotalIncome) => {
+          console.log("Thông báo mới:", msg);
+          setNotifications((prev) => [
+            { id: Date.now(), message: msg },
+            ...prev,
+          ]);
+          setTotalIncome(newTotalIncome);
+          setUser((prev) => ({
+            ...prev,
+            totalIncome: newTotalIncome,
+          }));
+        }}
+      />
 
       <div className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-4 pb-6 rounded-b-3xl shadow-md relative">
         <div className="flex justify-between items-center">
@@ -113,7 +131,41 @@ const DashboardNavbar = () => {
             </div>
           </div>
 
-          <Bell size={22} className="text-white cursor-pointer" />
+          <div className="relative" ref={bellRef}>
+            <Bell
+              size={22}
+              className="text-white cursor-pointer"
+              onClick={() => setShowNotification((prev) => !prev)}
+            />
+            {showNotification && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg z-50 p-4">
+                <div className="flex flex-col gap-2">
+                  {notifications.length === 0 ? (
+                    <div className="flex flex-col items-center py-8">
+                      <Bell size={40} className="text-gray-400 mb-2" />
+                      <p className="text-gray-700 font-semibold mb-1">
+                        Thông báo của bạn hiển thị ở đây
+                      </p>
+                      <p className="text-gray-500 text-sm text-center">
+                        Hiện chưa có thông báo nào.
+                      </p>
+                    </div>
+                  ) : (
+                    notifications.map((noti) => (
+                      <div
+                        key={noti.id}
+                        className="p-2 border-b last:border-b-0"
+                      >
+                        <span className="text-gray-800 text-sm">
+                          {noti.message}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Sidebar trượt từ trái */}

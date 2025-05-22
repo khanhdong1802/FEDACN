@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
 
-const IncomeModal = ({ onClose }) => {
+const IncomeModal = ({ onClose, onIncomeSuccess }) => {
+  console.log("IncomeModal nhận onIncomeSuccess:", onIncomeSuccess);
   const [amount, setAmount] = useState("");
   const [source, setSource] = useState(""); // Nguồn thu nhập
   const [note, setNote] = useState("");
@@ -42,17 +43,24 @@ const IncomeModal = ({ onClose }) => {
       const result = await response.json();
       if (response.ok) {
         alert("Thu nhập đã được lưu thành công!");
-        onClose();
-
         // Gọi lại API để lấy tổng thu nhập sau khi lưu thành công
         const updatedUser = JSON.parse(localStorage.getItem("user"));
         try {
           const incomeResponse = await fetch(
-            `http://localhost:3000/api/income/total/${updatedUser._id}` // ✅ đúng route
+            `http://localhost:3000/api/auth/income/total/${updatedUser._id}`
           );
+          if (!incomeResponse.ok) {
+            throw new Error("Không tìm thấy API tổng thu nhập");
+          }
           const incomeData = await incomeResponse.json();
           updatedUser.totalIncome = incomeData.total || 0;
           localStorage.setItem("user", JSON.stringify(updatedUser));
+          if (onIncomeSuccess)
+            onIncomeSuccess(
+              `Bạn vừa nạp ${amount} đ vào tài khoản!`,
+              incomeData.total || 0
+            );
+            onClose();
         } catch (err) {
           console.error("Lỗi khi lấy tổng thu nhập:", err);
         }

@@ -13,7 +13,8 @@ import IncomeModal from "./IncomeModal";
 import WithdrawModal from "./WithdrawModal";
 import DebtModal from "./DebtModal";
 import SpendingLimitModal from "./SpendingLimitModal";
-const FloatingButton = () => {
+const FloatingButton = ({ onIncomeSuccess }) => {
+  console.log("FloatingButton nhận onIncomeSuccess:", onIncomeSuccess);
   // điều khiển modal
   const [open, setOpen] = useState(false);
   const [showRecordModal, setShowRecordModal] = useState(false);
@@ -73,6 +74,7 @@ const FloatingButton = () => {
         <IncomeModal
           userId={userId}
           onClose={() => setShowIncomeModal(false)}
+          onIncomeSuccess={onIncomeSuccess}
         />
       )}
 
