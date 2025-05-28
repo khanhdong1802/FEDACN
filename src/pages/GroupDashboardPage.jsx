@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import CategoryCard from "../components/CategoryCard";
-
+import FloatingButton from "../components/FloatingButton";
 export default function GroupDashboardPage() {
   const { id: groupId } = useParams();
   const [groupInfo, setGroupInfo] = useState(null);
@@ -9,34 +9,40 @@ export default function GroupDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (!groupId || groupId === "settings") return; // Không fetch nếu là settings
-    const fetchGroupData = async () => {
-      try {
-        const resGroup = await fetch(
-          `http://localhost:3000/api/auth/${groupId}`
-        );
-        if (!resGroup.ok) throw new Error(`Group status ${resGroup.status}`);
-        const groupData = await resGroup.json();
-        setGroupInfo(groupData);
+  const fetchGroupData = useCallback(async () => {
+    try {
+      const resGroup = await fetch(`http://localhost:3000/api/auth/${groupId}`);
+      if (!resGroup.ok) throw new Error(`Group status ${resGroup.status}`);
+      const groupData = await resGroup.json();
 
-        // Lấy tất cả danh mục (vì backend chưa có route theo group)
-        const resCats = await fetch(
-          `http://localhost:3000/api/auth/categories`
-        );
-        if (!resCats.ok) throw new Error(`Categories status ${resCats.status}`);
-        const catData = await resCats.json();
-        setCategories(catData);
-      } catch (err) {
-        console.error("❌ Lỗi khi tải dữ liệu nhóm:", err);
-        setError("Không thể tải dữ liệu nhóm");
-      } finally {
-        setLoading(false);
-      }
-    };
+      // Lấy số dư nhóm từ API mới
+      const resBalance = await fetch(
+        `http://localhost:3000/api/auth/groups/${groupId}/balance`
+      );
 
-    fetchGroupData();
+      if (!resBalance.ok)
+        throw new Error(`Balance status ${resBalance.status}`);
+      const balanceData = await resBalance.json();
+      groupData.balance = balanceData.balance; // Gán số dư vào groupInfo
+
+      setGroupInfo(groupData);
+
+      const resCats = await fetch(`http://localhost:3000/api/auth/categories`);
+      if (!resCats.ok) throw new Error(`Categories status ${resCats.status}`);
+      const catData = await resCats.json();
+      setCategories(catData);
+    } catch (err) {
+      console.error("❌ Lỗi khi tải dữ liệu nhóm:", err);
+      setError("Không thể tải dữ liệu nhóm");
+    } finally {
+      setLoading(false);
+    }
   }, [groupId]);
+
+  useEffect(() => {
+    if (!groupId || groupId === "settings") return;
+    fetchGroupData();
+  }, [groupId, fetchGroupData]);
 
   const handleCategoryClick = (cat) => {
     alert(`Bạn đã chọn danh mục: ${cat.name}`);
@@ -77,6 +83,8 @@ export default function GroupDashboardPage() {
           </p>
         </div>
       </div>
+
+      <FloatingButton groupId={groupId} onSuccess={fetchGroupData} />
     </div>
   );
 }
