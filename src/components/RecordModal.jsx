@@ -1,94 +1,213 @@
-import React, { useState } from "react";
-import { X, ChevronDown } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X } from "lucide-react"; // Bỏ ChevronDown nếu không dùng cho Phương Thức
 import CategoryCard from "./CategoryCard";
-import avatar from "../assets/avatar.jpg";
+import avatarDefault from "../assets/avatar.jpg";
 import axios from "axios";
-import { useEffect } from "react";
 
-const RecordModal = ({ onClose, onWithdrawSuccess }) => {
-  const [selectAll, setSelectAll] = useState(true);
-  const [selectedTab, setSelectedTab] = useState("user");
-  const [selectedUsers, setSelectedUsers] = useState([]);
-  const [amount, setAmount] = useState(""); // Thêm state số tiền
-  const [description, setDescription] = useState(""); // Thêm state mô tả
+// Đổi tên prop onWithdrawSuccess thành onTransactionRecorded cho nhất quán
+const RecordModal = ({ onClose, onTransactionRecorded }) => {
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [category, setCategory] = useState(""); // Thêm state danh mục
-
-  const users = [
-    {
-      name: "Đông Trần Khánh",
-      email: "trankhanhdongk1@gmail.com",
-      avatar,
-    },
-  ];
-
+  const [category, setCategory] = useState("");
   const [categories, setCategories] = useState([]);
 
+  const [paymentMethod, setPaymentMethod] = useState("personalFund");
+  const [loggedInUser, setLoggedInUser] = useState(null);
+
+  // State cho Nhóm
+  const [availableGroups, setAvailableGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [selectedGroupActualBalance, setSelectedGroupActualBalance] =
+    useState(0);
+  const [loadingGroupBalance, setLoadingGroupBalance] = useState(false);
+
+  // State để lưu fund_id sẽ được dùng để ghi chú/phân loại khi chi tiêu nhóm
+  // Vì GroupExpenseSchema yêu cầu fund_id
+  const [fundIdForCategorization, setFundIdForCategorization] = useState("");
+  const [categorizationFundName, setCategorizationFundName] = useState("");
+
+  const [selectedTab, setSelectedTab] = useState("category");
+
   useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setLoggedInUser(parsedUser);
+
+      axios
+        .get(`http://localhost:3000/api/auth/groups?userId=${parsedUser._id}`)
+        .then((res) => {
+          setAvailableGroups(res.data.groups || []);
+        })
+        .catch((err) => console.error("Lỗi lấy danh sách nhóm:", err));
+    }
+
     axios
       .get("http://localhost:3000/api/auth/categories")
       .then((res) => setCategories(res.data))
       .catch(() => setCategories([]));
   }, []);
 
-  const handleCategoryClick = (id) => {
-    setCategory(id);
-  };
+  // Khi chọn nhóm hoặc đổi phương thức thanh toán
+  useEffect(() => {
+    setSelectedGroupActualBalance(0);
+    setFundIdForCategorization("");
+    setCategorizationFundName("");
 
-  const toggleSelectAll = () => {
-    if (selectAll) {
-      setSelectedUsers([]);
-    } else {
-      setSelectedUsers(users.map((_, idx) => idx));
+    if (selectedGroupId && paymentMethod === "groupFund") {
+      setLoadingGroupBalance(true);
+      axios
+        .get(
+          `http://localhost:3000/api/auth/groups/${selectedGroupId}/actual-balance`
+        )
+        .then((res) => {
+          console.log("API Response for group balance:", res.data); // DEBUG LOG
+          setSelectedGroupActualBalance(res.data.balance || 0);
+        })
+        .catch((err) => {
+          console.error(
+            "Lỗi lấy số dư tổng của nhóm:",
+            err.response ? err.response.data : err.message
+          ); // DEBUG LOG
+          setSelectedGroupActualBalance(0);
+        })
+        .finally(() => setLoadingGroupBalance(false));
+
+      // Lấy quỹ đầu tiên của nhóm (hoặc quỹ tên "Quỹ chung") để dùng cho fund_id khi tạo GroupExpense
+      // vì GroupExpenseSchema yêu cầu fund_id. Mục đích chính là để phân loại.
+      axios
+        .get(
+          `http://localhost:3000/api/auth/group-funds?groupId=${selectedGroupId}`
+        )
+        .then((res) => {
+          const funds = res.data.funds || [];
+          if (funds.length > 0) {
+            let targetFund = funds.find(
+              (f) =>
+                f.name.toLowerCase().includes("chung") ||
+                f.name.toLowerCase().includes("general")
+            );
+            if (!targetFund) {
+              targetFund = funds[0]; // Lấy quỹ đầu tiên nếu không có "Quỹ chung"
+            }
+            setFundIdForCategorization(targetFund._id);
+            setCategorizationFundName(targetFund.name);
+          } else {
+            // Nếu nhóm không có quỹ nào, cần xử lý (ví dụ: không cho phép chi tiêu nhóm)
+            // Hoặc backend cho phép tạo GroupExpense mà không cần fund_id nếu đó là chi tiêu chung của nhóm
+            // Hiện tại, GroupExpenseSchema yêu cầu fund_id
+            console.warn(
+              "Nhóm này không có quỹ nào để dùng cho việc phân loại chi tiêu."
+            );
+          }
+        })
+        .catch((err) => console.error("Lỗi lấy quỹ để phân loại:", err));
     }
-    setSelectAll(!selectAll);
-  };
+  }, [selectedGroupId, paymentMethod]);
 
-  const toggleUserSelect = (index) => {
-    const isSelected = selectedUsers.includes(index);
-    const newSelected = isSelected
-      ? selectedUsers.filter((i) => i !== index)
-      : [...selectedUsers, index];
-    setSelectedUsers(newSelected);
-    setSelectAll(newSelected.length === users.length);
-  };
+  const handleCategoryClick = (id) => setCategory(id);
 
-  // Hàm xử lý rút tiền
-  const handleWithdraw = async () => {
+  const handleSaveTransaction = async () => {
     if (!amount || Number(amount) <= 0) {
       alert("Vui lòng nhập số tiền hợp lệ!");
       return;
     }
-    // Lấy userId từ localStorage (hoặc props nếu có)
-    const user = JSON.parse(localStorage.getItem("user"));
-    const userId = user?._id;
-    if (!userId) {
-      alert("Không tìm thấy userId!");
+    if (!category) {
+      alert("Vui lòng chọn danh mục!");
+      return;
+    }
+    if (!loggedInUser?._id) {
+      alert("Không tìm thấy thông tin người dùng!");
       return;
     }
 
-    const selectedCategory = categories.find((cat) => cat._id === category);
-    const categoryName = selectedCategory ? selectedCategory.name : "";
-    console.log("Dữ liệu gửi lên:", {
-      user_id: userId,
-      amount: Number(amount),
-      category_id: category,
-      source: categoryName, 
-      note: description,
-    });
+    const transactionAmount = Number(amount);
+    const selectedCategoryObj = categories.find((cat) => cat._id === category);
+    const categoryName = selectedCategoryObj
+      ? selectedCategoryObj.name
+      : "Không rõ";
+    let successMessage = "";
+    let transactionType = "personal";
+    let personalBalanceDelta = -transactionAmount;
+
     try {
-      await axios.post("http://localhost:3000/api/auth/Withdraw", {
-        user_id: userId,
-        amount: Number(amount),
-        category_id: category,
-        source: categoryName, 
-        note: description,
-      });
-      alert("Rút tiền thành công!");
-      if (onWithdrawSuccess) onWithdrawSuccess();
+      if (paymentMethod === "personalFund") {
+        await axios.post("http://localhost:3000/api/auth/Withdraw", {
+          user_id: loggedInUser._id,
+          amount: transactionAmount,
+          category_id: category,
+          source: categoryName,
+          note: description,
+          transaction_date: date,
+          payment_method: paymentMethod,
+        });
+        successMessage = `Ghi chi tiêu (Cá nhân): ${
+          description || categoryName
+        } - ${transactionAmount.toLocaleString()} đ.`;
+        transactionType = "personal";
+      } else if (paymentMethod === "groupFund") {
+        if (!selectedGroupId) {
+          alert("Vui lòng chọn nhóm để chi tiêu!");
+          return;
+        }
+        if (!fundIdForCategorization) {
+          alert(
+            "Nhóm này cần có ít nhất một quỹ (ví dụ: 'Quỹ chung') để có thể ghi nhận chi tiêu theo yêu cầu của hệ thống. Vui lòng tạo quỹ cho nhóm."
+          );
+          return;
+        }
+        if (transactionAmount > selectedGroupActualBalance) {
+          alert(
+            `Số dư tài khoản nhóm không đủ! Số dư hiện tại của nhóm: ${selectedGroupActualBalance.toLocaleString()} đ`
+          );
+          return;
+        }
+
+        await axios.post("http://localhost:3000/api/auth/group-expenses", {
+          fund_id: fundIdForCategorization, // ID của quỹ mặc định/chung để phân loại
+          user_making_expense_id: loggedInUser._id, // User ID của người thực hiện
+          amount: transactionAmount,
+          date: date,
+          description: description,
+          category_id: category,
+        });
+        const selectedGroup = availableGroups.find(
+          (g) => g._id === selectedGroupId
+        );
+        successMessage = `Chi từ tài khoản nhóm ${
+          selectedGroup?.name || ""
+        } (Phân loại vào quỹ: ${categorizationFundName}): ${
+          description || categoryName
+        } - ${transactionAmount.toLocaleString()} đ.`;
+        transactionType = "groupFundDirect";
+        personalBalanceDelta = 0;
+      } else {
+        alert("Phương thức thanh toán không hợp lệ!");
+        return;
+      }
+
+      // Đổi tên onWithdrawSuccess thành onTransactionRecorded cho nhất quán
+      if (onTransactionRecorded) {
+        onTransactionRecorded(
+          successMessage,
+          personalBalanceDelta,
+          transactionType
+        );
+      }
+      alert("Ghi chép thành công!");
       onClose();
     } catch (err) {
-      alert("Rút tiền thất bại!");
+      const errorMessage =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        "Lỗi không xác định";
+      console.error(
+        `Lỗi khi ghi chép (${paymentMethod}):`,
+        errorMessage,
+        err.response
+      );
+      alert(`Ghi chép thất bại: ${errorMessage}`);
     }
   };
 
@@ -103,13 +222,31 @@ const RecordModal = ({ onClose, onWithdrawSuccess }) => {
           <h1 className="text-lg font-medium">Ghi chép</h1>
           <button
             className="text-purple-600 font-medium"
-            onClick={handleWithdraw}
+            onClick={handleSaveTransaction}
           >
             Lưu
           </button>
         </div>
 
-        {/* Tab buttons */}
+        {/* Phương Thức */}
+        <div className="flex justify-between items-center border-b py-3 mb-3">
+          <span className="text-gray-600 font-medium">Phương Thức</span>
+          <select
+            value={paymentMethod}
+            onChange={(e) => {
+              setPaymentMethod(e.target.value);
+              if (e.target.value === "personalFund") {
+                setSelectedGroupId("");
+              }
+            }}
+            className="text-sm text-gray-700 outline-none p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option value="personalFund">Tiền cá nhân</option>
+            <option value="groupFund">Chi tiêu nhóm</option>
+          </select>
+        </div>
+
+        {/* Tab lựa chọn */}
         <div className="flex justify-center gap-4 mb-4">
           <button
             className={`px-4 py-1 rounded-full text-sm font-medium ${
@@ -119,7 +256,7 @@ const RecordModal = ({ onClose, onWithdrawSuccess }) => {
             }`}
             onClick={() => setSelectedTab("user")}
           >
-            Người sử dụng
+            {paymentMethod === "groupFund" ? "Chọn Nhóm" : "Người sử dụng"}
           </button>
           <button
             className={`px-4 py-1 rounded-full text-sm font-medium ${
@@ -133,49 +270,81 @@ const RecordModal = ({ onClose, onWithdrawSuccess }) => {
           </button>
         </div>
 
-        {/* Content tabs */}
-        {selectedTab === "user" ? (
+        {/* Nội dung Tab */}
+        {selectedTab === "user" && (
           <div className="mb-4">
-            <h2 className="font-semibold text-sm text-gray-600 mb-2">
-              Người sử dụng
-            </h2>
-            <div className="flex flex-col gap-3">
-              {users.map((user, idx) => (
-                <div key={idx} className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    className="accent-purple-500"
-                    checked={selectedUsers.includes(idx)}
-                    onChange={() => toggleUserSelect(idx)}
-                  />
+            {paymentMethod === "personalFund" && loggedInUser ? (
+              <>
+                <h2 className="font-semibold text-sm text-gray-600 mb-2">
+                  Thực hiện bởi (Cá nhân)
+                </h2>
+                <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-lg shadow-sm">
                   <img
-                    src={user.avatar}
-                    alt="avatar"
+                    src={loggedInUser.avatar || avatarDefault}
+                    alt={loggedInUser.name}
                     className="w-10 h-10 rounded-full"
                   />
                   <div>
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-sm text-gray-500">{user.email}</p>
+                    <p className="font-medium text-indigo-700">
+                      {loggedInUser.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {loggedInUser.email}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="flex items-center justify-between mt-4">
-              <span>Chọn tất cả</span>
-              <label className="inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectAll}
-                  onChange={toggleSelectAll}
-                  className="sr-only peer"
-                />
-                <div className="w-10 h-5 bg-gray-300 rounded-full peer-checked:bg-purple-500 relative transition">
-                  <div className="w-5 h-5 bg-white rounded-full shadow absolute left-0 peer-checked:translate-x-full transition"></div>
+              </>
+            ) : paymentMethod === "groupFund" ? (
+              <div className="space-y-3">
+                <h2 className="font-semibold text-sm text-gray-600 mb-2">
+                  Chi Tiêu Từ Tài Khoản Nhóm
+                </h2>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 font-medium text-sm">
+                    Nhóm
+                  </span>
+                  <select
+                    value={selectedGroupId}
+                    onChange={(e) => setSelectedGroupId(e.target.value)}
+                    className="text-sm text-gray-700 outline-none p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-2/3"
+                    disabled={availableGroups.length === 0}
+                  >
+                    <option value="">-- Chọn nhóm --</option>
+                    {availableGroups.map((group) => (
+                      <option key={group._id} value={group._id}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </label>
-            </div>
+
+                {selectedGroupId && (
+                  <>
+                    <div className="text-sm text-gray-500 mt-2">
+                      Số dư tài khoản nhóm:{" "}
+                      {loadingGroupBalance ? (
+                        "Đang tải..."
+                      ) : (
+                        <span className="font-semibold text-indigo-600">
+                          {selectedGroupActualBalance.toLocaleString()} đ
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      (Chi tiêu sẽ được phân loại vào quỹ:{" "}
+                      <span className="italic">
+                        {categorizationFundName || "Chưa xác định"}
+                      </span>
+                      )
+                    </p>
+                  </>
+                )}
+              </div>
+            ) : null}
           </div>
-        ) : (
+        )}
+
+        {selectedTab === "category" && (
           <div className="mb-4">
             <h2 className="font-semibold text-sm text-gray-600 mb-2">
               Danh mục
@@ -184,7 +353,7 @@ const RecordModal = ({ onClose, onWithdrawSuccess }) => {
               {categories.map((cat) => (
                 <CategoryCard
                   key={cat._id}
-                  icon={cat.icon}
+                  icon={cat.icon || "📁"}
                   label={cat.name}
                   onClick={() => handleCategoryClick(cat._id)}
                   selected={category === cat._id}
@@ -194,15 +363,7 @@ const RecordModal = ({ onClose, onWithdrawSuccess }) => {
           </div>
         )}
 
-        {/* Các trường ghi chép */}
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center border-b py-2">
-            <span className="text-gray-500">Phương Thức</span>
-            <button className="flex items-center gap-1 text-sm text-gray-700">
-              Sử dụng tiền quỹ phòng <ChevronDown size={16} />
-            </button>
-          </div>
-
+        <div className="flex flex-col gap-3 mt-4">
           <div className="flex justify-between items-center border-b py-2">
             <span className="text-gray-500">Số tiền</span>
             <div className="flex items-center gap-1">
@@ -218,7 +379,6 @@ const RecordModal = ({ onClose, onWithdrawSuccess }) => {
               <span className="text-gray-700">đ</span>
             </div>
           </div>
-
           <div className="flex justify-between items-center border-b py-2">
             <span className="text-gray-500">Ngày chi</span>
             <input
@@ -228,7 +388,6 @@ const RecordModal = ({ onClose, onWithdrawSuccess }) => {
               onChange={(e) => setDate(e.target.value)}
             />
           </div>
-
           <div className="border-b py-2">
             <textarea
               rows={2}

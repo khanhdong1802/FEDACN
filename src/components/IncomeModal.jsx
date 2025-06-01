@@ -1,38 +1,67 @@
+// src/components/IncomeModal.jsx
 import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
-const IncomeModal = ({ onClose, onSuccess, groupId }) => {
+// Đảm bảo IncomeModal nhận prop onIncomeSuccess từ FloatingButton
+const IncomeModal = ({
+  onClose,
+  onSuccess,
+  groupId,
+  onIncomeSuccessCallback,
+}) => {
   const [mode, setMode] = useState("personal");
   const [groups, setGroups] = useState([]);
-  const [groupFunds, setGroupFunds] = useState([]); // Danh sách quỹ nhóm
+  const [groupFunds, setGroupFunds] = useState([]);
   const [groupFundName, setGroupFundName] = useState("");
-  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [selectedGroupId, setSelectedGroupId] = useState(groupId || ""); // Ưu tiên groupId từ props nếu có
   const [amount, setAmount] = useState("");
   const [source, setSource] = useState("");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [newFundName, setNewFundName] = useState(""); // Tên quỹ mới nhập
+  const [newFundName, setNewFundName] = useState("");
 
   const predefinedSources = ["Lương", "Bán đồ", "Quà", "Khác"];
   const user = JSON.parse(localStorage.getItem("user"));
 
-  // Lấy danh sách nhóm
   useEffect(() => {
     if (user?._id) {
       fetch(`http://localhost:3000/api/auth/groups?userId=${user._id}`)
         .then((res) => res.json())
         .then((data) => {
           setGroups(data.groups || []);
+          if (
+            groupId &&
+            mode === "group" &&
+            !selectedGroupId &&
+            data.groups?.find((g) => g._id === groupId)
+          ) {
+            setSelectedGroupId(groupId);
+          }
         })
         .catch((err) => console.error("Lỗi khi lấy danh sách nhóm:", err));
     }
-  }, [user._id]);
-
-  // Lấy danh sách quỹ nhóm khi chọn nhóm
+  }, [user?._id, groupId, mode, selectedGroupId]);
   useEffect(() => {
-    if (selectedGroupId) {
+    if (groupId && !selectedGroupId) {
+      const groupExists = groups.some((g) => g._id === groupId);
+      if (groupExists) {
+        setSelectedGroupId(groupId);
+        if (
+          mode !== "group" &&
+          !groups.find((g) => g._id === selectedGroupId)
+        ) {
+          // Nếu đang personal mà có groupId, chuyển sang group
+          setMode("group");
+        }
+      }
+    }
+  }, [groupId, groups, selectedGroupId, mode]);
+
+  useEffect(() => {
+    if (selectedGroupId && mode === "group") {
+      // Chỉ fetch khi ở mode group và đã chọn group
       fetch(
         `http://localhost:3000/api/auth/group-funds?groupId=${selectedGroupId}`
       )
@@ -44,14 +73,17 @@ const IncomeModal = ({ onClose, onSuccess, groupId }) => {
               : []
           );
         })
-        .catch((err) => console.error("Lỗi khi lấy danh sách quỹ nhóm:", err));
+        .catch((err) => {
+          console.error("Lỗi khi lấy danh sách quỹ nhóm:", err);
+          setGroupFunds([]);
+        });
     } else {
       setGroupFunds([]);
     }
-  }, [selectedGroupId]);
+  }, [selectedGroupId, mode]);
 
-  // Hàm thêm quỹ mới
   const handleAddFund = async () => {
+    // ... (logic handleAddFund giữ nguyên)
     if (!newFundName.trim() || !selectedGroupId) return;
     try {
       const res = await fetch("http://localhost:3000/api/auth/group-funds", {
@@ -62,15 +94,18 @@ const IncomeModal = ({ onClose, onSuccess, groupId }) => {
           name: newFundName.trim(),
         }),
       });
-      const data = await res.json();
-      console.log("Kết quả thêm quỹ:", data); // data chính là object quỹ mới
+      const newFundData = await res.json(); // Đổi tên biến để tránh trùng với data của handleSave
+      console.log("Kết quả thêm quỹ:", newFundData);
 
-      if (res.ok && data && data._id) {
-        setGroupFunds((prev) => [...prev, data]);
-        setGroupFundName(data.name);
+      if (res.ok && newFundData && newFundData._id) {
+        // API trả về object quỹ mới có _id
+        setGroupFunds((prev) => [...prev, newFundData]);
+        setGroupFundName(newFundData.name); // Chọn luôn quỹ vừa tạo
         setNewFundName("");
       } else {
-        alert(data.error || "Không thể thêm quỹ mới");
+        alert(
+          newFundData.error || newFundData.message || "Không thể thêm quỹ mới"
+        );
       }
     } catch (err) {
       alert("Lỗi khi thêm quỹ mới");
@@ -78,12 +113,14 @@ const IncomeModal = ({ onClose, onSuccess, groupId }) => {
   };
 
   const handleSave = async () => {
+    const numericAmount = Number(amount);
     if (
-      !amount ||
+      !numericAmount ||
+      numericAmount <= 0 ||
       !source ||
       (mode === "group" && (!selectedGroupId || !groupFundName.trim()))
     ) {
-      alert("Vui lòng điền đầy đủ thông tin!");
+      alert("Vui lòng điền đầy đủ thông tin hợp lệ!");
       return;
     }
 
@@ -92,7 +129,7 @@ const IncomeModal = ({ onClose, onSuccess, groupId }) => {
 
     try {
       const payload = {
-        amount,
+        amount: numericAmount,
         source,
         received_date: date,
         note,
@@ -100,16 +137,31 @@ const IncomeModal = ({ onClose, onSuccess, groupId }) => {
       };
 
       let apiUrl = "";
+      let successMessage = "";
+      let transactionType = "";
+      let amountDeltaForNavbar = numericAmount; // Số tiền ảnh hưởng đến số dư cá nhân trên Navbar
 
       if (mode === "personal") {
         payload.user_id = user._id;
         apiUrl = "http://localhost:3000/api/auth/Income";
+        successMessage = `Nạp tiền cá nhân thành công: ${numericAmount.toLocaleString()} đ từ ${source}.`;
+        transactionType = "personalIncome"; // Thu nhập cá nhân
       } else {
+        // mode === "group" (Nạp tiền vào quỹ nhóm)
         payload.group_id = selectedGroupId;
         payload.fund_name = groupFundName.trim();
-        payload.member_id = user._id;
-        payload.payment_method = "cash";
+        payload.member_id = user._id; // Người dùng hiện tại đang nạp tiền vào quỹ nhóm
+        payload.payment_method = "cash"; // Hoặc phương thức khác
         apiUrl = "http://localhost:3000/api/auth/group-contributions";
+
+        const selectedGroup = groups.find((g) => g._id === selectedGroupId);
+        successMessage = `Nạp ${numericAmount.toLocaleString()} đ vào quỹ "${groupFundName}" của nhóm "${
+          selectedGroup?.name || ""
+        }" thành công.`;
+        // Vì backend API /group-contributions của bạn tạo Income âm (trừ tiền cá nhân)
+        // nên amountDelta gửi lên Navbar phải là số âm.
+        amountDeltaForNavbar = -numericAmount;
+        transactionType = "personal"; // Coi như một chi tiêu cá nhân để nạp vào nhóm
       }
 
       const response = await fetch(apiUrl, {
@@ -121,21 +173,39 @@ const IncomeModal = ({ onClose, onSuccess, groupId }) => {
       const result = await response.json();
 
       if (response.ok) {
-        alert("Nạp tiền thành công!");
-        if (onSuccess) onSuccess();
-        onClose();
+        alert(successMessage); // Thông báo cho người dùng
+
+        // Gọi onIncomeSuccess (sẽ được truyền từ FloatingButton -> DashboardNavbar)
+        // để cập nhật thông báo và số dư cá nhân trên DashboardNavbar
+        if (onIncomeSuccessCallback) {
+          onIncomeSuccessCallback(
+            successMessage,
+            amountDeltaForNavbar,
+            transactionType
+          );
+        }
+
+        // Gọi onSuccess (nếu có, thường từ GroupDashboardPage để fetch lại data nhóm)
+        if (onSuccess) {
+          onSuccess();
+        }
+
+        onClose(); // Đóng modal
       } else {
-        setErrorMessage(result.message || "Đã xảy ra lỗi khi nạp tiền");
+        setErrorMessage(
+          result.message || "Đã xảy ra lỗi khi thực hiện giao dịch"
+        );
       }
     } catch (error) {
-      console.error("Lỗi:", error);
-      setErrorMessage("Lỗi khi gửi dữ liệu");
+      console.error("Lỗi khi lưu giao dịch:", error);
+      setErrorMessage("Lỗi khi gửi dữ liệu đến máy chủ");
     } finally {
       setLoading(false);
     }
   };
 
   return (
+    // ... JSX của IncomeModal giữ nguyên ...
     <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
       <div className="bg-white w-full max-w-md rounded-t-2xl p-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
@@ -231,7 +301,7 @@ const IncomeModal = ({ onClose, onSuccess, groupId }) => {
                   value={selectedGroupId}
                   onChange={(e) => {
                     setSelectedGroupId(e.target.value);
-                    setGroupFundName(""); // reset quỹ khi đổi nhóm
+                    setGroupFundName("");
                   }}
                   className="text-right w-1/2 text-gray-700 outline-none bg-transparent"
                 >

@@ -10,38 +10,60 @@ export default function GroupDashboardPage() {
   const [error, setError] = useState(null);
 
   const fetchGroupData = useCallback(async () => {
+    setLoading(true); // Nên đặt ở đầu để có phản hồi tải
+    setError(null); // Reset lỗi trước mỗi lần fetch
     try {
-      const resGroup = await fetch(`http://localhost:3000/api/auth/${groupId}`);
-      if (!resGroup.ok) throw new Error(`Group status ${resGroup.status}`);
-      const groupData = await resGroup.json();
+      // Lấy thông tin cơ bản của nhóm
+      const resGroup = await fetch(`http://localhost:3000/api/auth/${groupId}`); // Giả sử API này lấy tên nhóm, mô tả,...
+      if (!resGroup.ok) {
+        const errorData = await resGroup.json().catch(() => ({})); // Cố gắng đọc lỗi JSON
+        throw new Error(
+          errorData.message ||
+            `Lấy thông tin nhóm thất bại, status: ${resGroup.status}`
+        );
+      }
+      const groupDetails = await resGroup.json();
 
-      // Lấy số dư nhóm từ API mới
-      const resBalance = await fetch(
-        `http://localhost:3000/api/auth/groups/${groupId}/balance`
+      // Lấy số dư TỔNG THỰC TẾ của nhóm bằng API mới
+      const resActualBalance = await fetch(
+        `http://localhost:3000/api/auth/groups/${groupId}/actual-balance` // <<<< API LẤY SỐ DƯ MỚI
       );
 
-      if (!resBalance.ok)
-        throw new Error(`Balance status ${resBalance.status}`);
-      const balanceData = await resBalance.json();
-      groupData.balance = balanceData.balance; // Gán số dư vào groupInfo
+      if (!resActualBalance.ok) {
+        const balanceErrorData = await resActualBalance
+          .json()
+          .catch(() => ({}));
+        throw new Error(
+          balanceErrorData.message ||
+            `Lấy số dư nhóm thất bại, status: ${resActualBalance.status}`
+        );
+      }
+      const actualBalanceData = await resActualBalance.json();
 
-      setGroupInfo(groupData);
+      // Cập nhật state với thông tin nhóm và số dư thực tế
+      setGroupInfo({
+        ...groupDetails, // Giữ lại thông tin nhóm từ API đầu tiên
+        balance: actualBalanceData.balance, // Gán số dư thực tế
+      });
 
+      // Fetch categories nếu cần thiết cho trang này
       const resCats = await fetch(`http://localhost:3000/api/auth/categories`);
       if (!resCats.ok) throw new Error(`Categories status ${resCats.status}`);
       const catData = await resCats.json();
       setCategories(catData);
     } catch (err) {
       console.error("❌ Lỗi khi tải dữ liệu nhóm:", err);
-      setError("Không thể tải dữ liệu nhóm");
+      setError(err.message || "Không thể tải dữ liệu nhóm. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId]); // Phụ thuộc vào groupId
 
   useEffect(() => {
-    if (!groupId || groupId === "settings") return;
-    fetchGroupData();
+    if (groupId && groupId !== "settings") {
+      // Kiểm tra groupId hợp lệ
+      fetchGroupData();
+    }
   }, [groupId, fetchGroupData]);
 
   const handleCategoryClick = (cat) => {
@@ -56,7 +78,9 @@ export default function GroupDashboardPage() {
         <div className="text-center text-purple-600 font-semibold">
           {groupInfo?.name || "Tên nhóm"}
         </div>
-        <div>Số dư: {groupInfo?.balance?.toLocaleString() || 0} đ</div>
+        <div>
+          Số dư nhóm:{" "}{loading ? "Đang tải..." : groupInfo?.balance?.toLocaleString() || 0}{" "}đ
+        </div>
       </div>
 
       {/* Danh mục */}
