@@ -63,9 +63,11 @@ const IncomeModal = ({ onClose, onSuccess, groupId }) => {
         }),
       });
       const data = await res.json();
-      if (res.ok) {
-        setGroupFunds((prev) => [...prev, data.fund]);
-        setGroupFundName(data.fund.name);
+      console.log("Kết quả thêm quỹ:", data); // data chính là object quỹ mới
+
+      if (res.ok && data && data._id) {
+        setGroupFunds((prev) => [...prev, data]);
+        setGroupFundName(data.name);
         setNewFundName("");
       } else {
         alert(data.error || "Không thể thêm quỹ mới");
