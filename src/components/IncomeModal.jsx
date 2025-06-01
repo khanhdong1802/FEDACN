@@ -38,7 +38,11 @@ const IncomeModal = ({ onClose, onSuccess, groupId }) => {
       )
         .then((res) => res.json())
         .then((data) => {
-          setGroupFunds(data.funds || []);
+          setGroupFunds(
+            Array.isArray(data.funds)
+              ? data.funds.filter((f) => f && f.name)
+              : []
+          );
         })
         .catch((err) => console.error("Lỗi khi lấy danh sách quỹ nhóm:", err));
     } else {
@@ -251,11 +255,14 @@ const IncomeModal = ({ onClose, onSuccess, groupId }) => {
                   <option value="" disabled>
                     Chọn quỹ nhóm
                   </option>
-                  {groupFunds.map((fund) => (
-                    <option key={fund._id} value={fund.name}>
-                      {fund.name}
-                    </option>
-                  ))}
+                  {Array.isArray(groupFunds) &&
+                    groupFunds
+                      .filter((fund) => fund && fund.name)
+                      .map((fund) => (
+                        <option key={fund._id} value={fund.name}>
+                          {fund.name}
+                        </option>
+                      ))}
                 </select>
               </div>
 
