@@ -4,11 +4,136 @@ import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
 import { format, subDays, addDays, isSameDay } from "date-fns";
 import vi from "date-fns/locale/vi";
 
+function TransactionHistoryHeader({
+  onTabChange,
+  onTypeFilterChange,
+  currentTab,
+  currentType,
+}) {
+  return (
+    <div className="flex flex-col gap-2 bg-white px-4 py-2 border-b">
+      <div className="flex gap-2">
+        {["Tất cả", "Cá nhân", "Nhóm"].map((tab) => (
+          <button
+            key={tab}
+            className={`px-3 py-1 rounded-full font-medium ${
+              currentTab === tab
+                ? "bg-purple-200 text-purple-700"
+                : "bg-gray-100 text-gray-600"
+            }`}
+            onClick={() => onTabChange(tab)}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        {["Tất cả", "Nạp", "Rút", "Chi tiêu", "Đóng góp"].map((type) => (
+          <button
+            key={type}
+            className={`px-2 py-1 rounded text-xs ${
+              currentType === type
+                ? "bg-blue-200 text-blue-700"
+                : "bg-gray-100 text-gray-600"
+            }`}
+            onClick={() => onTypeFilterChange(type)}
+          >
+            {type}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TransactionItem({ tx }) {
+  // Xác định loại và màu
+  let bg = "bg-gray-100",
+    text = "text-gray-800",
+    label = "";
+  if (tx.transaction_type === "income") {
+    bg = "bg-green-200/80";
+    text = "text-green-900";
+    label = "Nạp tiền";
+  } else if (tx.transaction_type === "withdraw") {
+    bg = "bg-red-200/80";
+    text = "text-red-900";
+    label = "Rút tiền";
+  } else if (tx.transaction_type === "contribution") {
+    bg = "bg-purple-400/80";
+    text = "text-purple-900";
+    label = "Đóng góp nhóm";
+  } else if (tx.transaction_type === "groupExpense") {
+    bg = "bg-blue-200/80";
+    text = "text-blue-900";
+    label = "Chi tiêu nhóm";
+  }
+
+  return (
+    <div className={`mb-3 p-4 rounded-xl shadow-sm ${bg}`}>
+      <div className="flex items-start gap-2">
+        {/* Chấm tròn giờ bên trái */}
+        <div className="flex flex-col items-center mr-2">
+          <span
+            className={`w-3 h-3 rounded-full block mt-1 ${bg.replace(
+              "/80",
+              ""
+            )}`}
+          ></span>
+          <span className="text-xs text-gray-500 mt-1">
+            {tx.transaction_date
+              ? new Date(tx.transaction_date).toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : ""}
+          </span>
+        </div>
+        {/* Nội dung */}
+        <div className="flex-1">
+          <div className={`font-semibold ${text}`}>
+            {tx.user_id?.name || "Không rõ"} - {label}{" "}
+            {tx.amount ? tx.amount.toLocaleString() + " đ" : ""}
+          </div>
+          <div className="text-sm text-gray-700">
+            Ghi chú: {tx.description || "Không có"}
+          </div>
+          <div className="text-xs text-gray-600 flex gap-2 mt-1">
+            {tx.category_name && <>📁 {tx.category_name}</>}
+            {tx.group_name && <>🏠 {tx.group_name}</>}
+            {tx.source && <>Nguồn: {tx.source}</>}
+            {tx.target && <>Đích: {tx.target}</>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TransactionList({ transactions, loading }) {
+  if (loading)
+    return <div className="text-center py-10 text-gray-500">Đang tải...</div>;
+  if (!transactions.length)
+    return (
+      <div className="text-center text-gray-400">Không có giao dịch nào.</div>
+    );
+
+  return (
+    <div className="px-3 py-4">
+      {transactions.map((tx) => (
+        <TransactionItem key={tx._id} tx={tx} />
+      ))}
+    </div>
+  );
+}
+
 export default function TransactionHistoryPage() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [userId, setUserId] = useState("");
+  const [tab, setTab] = useState("Tất cả");
+  const [typeFilter, setTypeFilter] = useState("Tất cả");
   const navigate = useNavigate();
 
   // Lấy userId từ localStorage
@@ -42,6 +167,20 @@ export default function TransactionHistoryPage() {
   const handleExportCSV = () => {
     alert("Tính năng xuất CSV đang phát triển!");
   };
+
+  // Lọc giao dịch theo tab và loại
+  const filteredTransactions = transactions.filter((tx) => {
+    // Lọc theo tab
+    if (tab === "Cá nhân" && tx.group_id) return false;
+    if (tab === "Nhóm" && !tx.group_id) return false;
+    // Lọc theo loại
+    if (
+      typeFilter !== "Tất cả" &&
+      tx.transaction_type !== typeFilter.toLowerCase()
+    )
+      return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -91,91 +230,22 @@ export default function TransactionHistoryPage() {
         </button>
       </div>
 
-      {/* Hiển thị giao dịch */}
-      {loading ? (
-        <div className="text-center py-10 text-gray-500">Đang tải...</div>
-      ) : (
-        <div className="px-3 py-4">
-          {transactions.length === 0 ? (
-            <div className="text-center text-gray-400">
-              Không có giao dịch nào.
-            </div>
-          ) : (
-            transactions.map((tx) => {
-              const isContribution = tx.transaction_type === "contribution";
-              return (
-                <div
-                  key={tx._id}
-                  className={`mb-3 p-4 rounded-xl shadow-sm ${
-                    isContribution ? "bg-purple-400/80" : "bg-teal-300/80"
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    {/* Chấm tròn giờ bên trái */}
-                    <div className="flex flex-col items-center mr-2">
-                      <span
-                        className={`w-3 h-3 rounded-full block mt-1 ${
-                          isContribution ? "bg-purple-500" : "bg-teal-500"
-                        }`}
-                      ></span>
-                      <span className="text-xs text-gray-500 mt-1">
-                        {tx.transaction_date
-                          ? new Date(tx.transaction_date).toLocaleTimeString(
-                              "vi-VN",
-                              {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }
-                            )
-                          : ""}
-                      </span>
-                    </div>
-                    {/* Nội dung giao dịch */}
-                    <div className="flex-1">
-                      <div
-                        className={`font-semibold ${
-                          isContribution ? "text-purple-900" : "text-teal-900"
-                        }`}
-                      >
-                        {tx.user_id?.name || "Không rõ"}{" "}
-                        {isContribution
-                          ? `- Đóng tiền ${tx.amount?.toLocaleString()} đ`
-                          : "- Thêm ghi chép mới"}
-                      </div>
-                      <div className="text-sm text-gray-700">
-                        Ghi chú: {tx.description || "Không có"}
-                      </div>
-                      {tx.amount && !isContribution && (
-                        <div className="text-sm text-gray-700">
-                          Tổng tiền: {tx.amount.toLocaleString()} đ
-                        </div>
-                      )}
-                      {/* Ví dụ thêm các trường khác cho ghi chép */}
-                      {!isContribution && (
-                        <>
-                          {tx.category_name && (
-                            <div className="text-xs text-gray-600 flex items-center gap-1">
-                              <span>📁 {tx.category_name}</span>
-                            </div>
-                          )}
-                          {tx.group_name && (
-                            <div className="text-xs text-gray-600 flex items-center gap-1">
-                              <span>🏠 {tx.group_name}</span>
-                            </div>
-                          )}
-                          <div className="text-xs text-gray-600">
-                            Người sử dụng: {tx.user_id?.name}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
+      {/* Nội dung chính */}
+      <div className="px-3 py-4">
+        {/* Tabs chọn loại giao dịch */}
+        <TransactionHistoryHeader
+          onTabChange={setTab}
+          onTypeFilterChange={setTypeFilter}
+          currentTab={tab}
+          currentType={typeFilter}
+        />
+
+        {/* Hiển thị giao dịch */}
+        <TransactionList
+          transactions={filteredTransactions}
+          loading={loading}
+        />
+      </div>
     </div>
   );
 }
