@@ -13,7 +13,9 @@ export default function GroupDashboardPage() {
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [groupTransactionHistory, setGroupTransactionHistory] = useState([]);
-  const [visibleCount, setVisibleCount] = useState(4); // Thêm state phân trang
+  const [visibleCount, setVisibleCount] = useState(5);
+  const initialVisibleCount = 5; 
+  const incrementCount = 10;  
 
   const fetchGroupData = useCallback(async () => {
     setLoading(true);
@@ -83,7 +85,7 @@ export default function GroupDashboardPage() {
 
   // Reset phân trang khi đổi nhóm
   useEffect(() => {
-    setVisibleCount(4);
+    setVisibleCount(initialVisibleCount);
   }, [groupId]);
 
   const handleCategoryClick = (cat) => {
@@ -157,10 +159,12 @@ export default function GroupDashboardPage() {
               >
                 <div
                   className={`w-10 h-10 flex items-center justify-center rounded-full text-white ${
-                    tx.amount > 0 ? "bg-green-500" : "bg-red-500"
+                    tx.transaction_type === "expense"
+                      ? "bg-red-500"
+                      : "bg-green-500"
                   }`}
                 >
-                  {tx.amount > 0 ? "+" : "-"}
+                  {tx.transaction_type === "expense" ? "-" : "+"}
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between items-center">
@@ -169,10 +173,12 @@ export default function GroupDashboardPage() {
                     </span>
                     <span
                       className={`font-semibold ${
-                        tx.amount > 0 ? "text-green-600" : "text-red-600"
+                        tx.transaction_type === "expense"
+                          ? "text-red-600"
+                          : "text-green-600"
                       }`}
                     >
-                      {tx.amount > 0 ? "+" : ""}
+                      {tx.transaction_type === "expense" ? "-" : "+"}{" "}
                       {tx.amount.toLocaleString()} đ
                     </span>
                   </div>
@@ -196,25 +202,27 @@ export default function GroupDashboardPage() {
             ))}
           </div>
           {/* Nút "Xem thêm" và "Thu gọn" nằm trong khối này */}
-          {visibleCount < groupTransactionHistory.length ? (
-            <div className="text-center">
+          {visibleCount < groupTransactionHistory.length && (
+            <div className="text-center mt-4">
               <button
-                onClick={() => setVisibleCount((prev) => prev + 4)}
+                onClick={() => setVisibleCount((prev) => prev + incrementCount)}
                 className="text-blue-600 hover:underline text-sm font-medium"
               >
-                Xem thêm
+                Xem thêm ({incrementCount} mục)
               </button>
             </div>
-          ) : groupTransactionHistory.length > 4 ? (
-            <div className="text-center">
-              <button
-                onClick={() => setVisibleCount(4)}
-                className="text-gray-500 hover:underline text-sm font-medium"
-              >
-                Thu gọn
-              </button>
-            </div>
-          ) : null}
+          )}
+          {visibleCount > initialVisibleCount &&
+            groupTransactionHistory.length > initialVisibleCount && (
+              <div className="text-center mt-2">
+                <button
+                  onClick={() => setVisibleCount(initialVisibleCount)}
+                  className="text-gray-500 hover:underline text-sm font-medium"
+                >
+                  Thu gọn
+                </button>
+              </div>
+            )}
         </div>
       )}
     </div>

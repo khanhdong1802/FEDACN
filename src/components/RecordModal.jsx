@@ -202,7 +202,7 @@ const RecordModal = ({
           personalBalanceDelta,
           transactionType
         );
-      }
+      } 
       alert("Ghi chép thành công!");
       onClose();
     } catch (err) {

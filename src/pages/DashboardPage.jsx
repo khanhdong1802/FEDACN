@@ -12,7 +12,9 @@ export default function DashboardPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
 
   // NEW: State cho hiển thị phân trang giao dịch
-  const [visibleCount, setVisibleCount] = useState(4);
+  const [visibleCount, setVisibleCount] = useState(5);
+  const initialVisibleCount = 5; 
+  const incrementCount = 10;  
 
   // Fetch danh mục
   useEffect(() => {
@@ -39,6 +41,7 @@ export default function DashboardPage() {
   };
 
   const fetchTransactionHistory = async () => {
+    console.log("PAGE: fetchTransactionHistory ĐƯỢC GỌI");
     try {
       const user = JSON.parse(localStorage.getItem("user"));
       if (!user?._id) return;
@@ -89,75 +92,127 @@ export default function DashboardPage() {
               Giao dịch gần đây
             </h2>
             <div className="space-y-3">
-              {transactionHistory.slice(0, visibleCount).map((tx) => (
-                <div
-                  key={tx._id}
-                  className="flex items-start gap-3 p-4 rounded-xl shadow-sm bg-white border border-gray-100"
-                >
+              {transactionHistory.slice(0, visibleCount).map((tx) => {
+                // Xác định loại giao dịch để tùy chỉnh hiển thị
+                const isIncome = tx.transaction_type === "income";
+                const isExpense = tx.transaction_type === "expense";
+                const isContribution = tx.transaction_type === "contribution";
+
+                let iconBgClass = "bg-gray-400";
+                let iconSign = "";
+                let amountColorClass = "text-gray-700";
+                let amountPrefix = "";
+                const displayAmount = tx.amount;
+
+                if (isIncome) {
+                  iconBgClass = "bg-green-500";
+                  iconSign = "+";
+                  amountColorClass = "text-green-600";
+                  amountPrefix = "+ ";
+                } else if (isExpense) {
+                  iconBgClass = "bg-red-500";
+                  iconSign = "-";
+                  amountColorClass = "text-red-600";
+                  amountPrefix = "- ";
+                } else if (isContribution) {
+                  // Contribution là tiền đi ra khỏi tài khoản cá nhân
+                  iconBgClass = "bg-red-500"; // Hiển thị như một khoản chi
+                  iconSign = "-";
+                  amountColorClass = "text-red-600";
+                  amountPrefix = "- ";
+                } else {
+                  if (tx.amount >= 0) {
+                    // Mặc định coi số dương là thu
+                    iconBgClass = "bg-green-500";
+                    iconSign = "+";
+                    amountColorClass = "text-green-600";
+                    amountPrefix = "+ ";
+                  } else {
+                    // Mặc định số âm là chi (ít khả năng xảy ra nếu amount luôn dương từ API)
+                    iconBgClass = "bg-red-500";
+                    iconSign = "-";
+                    amountColorClass = "text-red-600";
+                    amountPrefix = "- ";
+                    // displayAmount = Math.abs(tx.amount); // Nếu amount có thể âm từ API
+                  }
+                }
+
+                return (
                   <div
-                    className={`w-10 h-10 flex items-center justify-center rounded-full text-white ${
-                      tx.amount > 0 ? "bg-green-500" : "bg-red-500"
-                    }`}
+                    key={tx._id}
+                    className="flex items-start gap-3 p-4 rounded-xl shadow-sm bg-white border border-gray-100"
                   >
-                    {tx.amount > 0 ? "+" : "-"}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-gray-800 capitalize">
-                        {tx.transaction_type}
-                      </span>
-                      <span
-                        className={`font-semibold ${
-                          tx.amount > 0 ? "text-green-600" : "text-red-600"
-                        }`}
-                      >
-                        {tx.amount > 0 ? "+" : ""}
-                        {tx.amount.toLocaleString()} đ
-                      </span>
+                    <div
+                      className={`w-10 h-10 flex items-center justify-center rounded-full text-xl font-bold text-white ${iconBgClass}`}
+                    >
+                      {iconSign}
                     </div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      Ngày:{" "}
-                      {tx.transaction_date
-                        ? new Date(tx.transaction_date).toLocaleDateString(
-                            "vi-VN"
-                          )
-                        : ""}
-                      {tx.description && (
-                        <>
-                          {" | "}Ghi chú:{" "}
-                          <span className="italic">{tx.description}</span>
-                        </>
-                      )}
-                      {tx.status && (
-                        <>
-                          {" | "}Trạng thái: {tx.status}
-                        </>
-                      )}
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-gray-800 capitalize">
+                          {tx.description || tx.transaction_type}
+                        </span>
+                        <span className={`font-semibold ${amountColorClass}`}>
+                          {amountPrefix}
+                          {displayAmount.toLocaleString()} đ
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        {/* ... thông tin ngày, ghi chú, trạng thái ... */}
+                        Ngày:{" "}
+                        {tx.transaction_date
+                          ? new Date(tx.transaction_date).toLocaleDateString(
+                              "vi-VN"
+                            )
+                          : ""}
+                        {tx.description &&
+                          tx.description !== tx.transaction_type && (
+                            <>
+                              {" | "}Ghi chú:{" "}
+                              <span className="italic">{tx.description}</span>
+                            </>
+                          )}
+                        {tx.status && (
+                          <>
+                            {" | "}Trạng thái: {tx.status}
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Nút "Xem thêm" và "Thu gọn" */}
-              {visibleCount < transactionHistory.length ? (
-                <div className="text-center">
+              {visibleCount < transactionHistory.length && (
+                <div className="text-center mt-4">
+                  {" "}
+                  {/* Thêm margin-top cho nút */}
                   <button
-                    onClick={() => setVisibleCount((prev) => prev + 4)}
+                    onClick={() =>
+                      setVisibleCount((prev) => prev + incrementCount)
+                    } // THAY ĐỔI: Tăng thêm incrementCount
                     className="text-blue-600 hover:underline text-sm font-medium"
                   >
-                    Xem thêm
+                    Xem thêm ({incrementCount} mục)
                   </button>
                 </div>
-              ) : transactionHistory.length > 4 ? (
-                <div className="text-center">
-                  <button
-                    onClick={() => setVisibleCount(4)}
-                    className="text-gray-500 hover:underline text-sm font-medium"
-                  >
-                    Thu gọn
-                  </button>
-                </div>
-              ) : null}
+              )}
+
+              {/* Chỉ hiển thị "Thu gọn" nếu số lượng đang hiển thị > số lượng ban đầu */}
+              {visibleCount > initialVisibleCount &&
+                transactionHistory.length > initialVisibleCount && (
+                  <div className="text-center mt-2">
+                    {" "}
+                    {/* Thêm margin-top cho nút */}
+                    <button
+                      onClick={() => setVisibleCount(initialVisibleCount)} // THAY ĐỔI: Quay về initialVisibleCount
+                      className="text-gray-500 hover:underline text-sm font-medium"
+                    >
+                      Thu gọn
+                    </button>
+                  </div>
+                )}
             </div>
           </div>
         )}
