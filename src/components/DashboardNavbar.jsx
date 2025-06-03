@@ -153,12 +153,10 @@ const DashboardNavbar = () => {
       return updatedNotifications;
     });
 
-    // Logic cập nhật số dư và tổng chi (giữ nguyên như bạn đã có)
-    if (transactionType !== "groupFundDirect") {
-      setTotalIncome((prevTotalIncome) => prevTotalIncome + amountDelta);
-      if (amountDelta < 0 && transactionType === "personal") {
-        setTotalSpent((prevTotalSpent) => prevTotalSpent - amountDelta);
-      }
+    // KHÔNG cập nhật state totalSpent hoặc totalIncome trực tiếp ở đây!
+    // Chỉ fetch lại số dư và tổng chi từ backend:
+    if (user?._id) {
+      fetchNavbarData(user._id); // Chỉ fetch lại số dư/tổng chi từ backend
     }
   };
 
@@ -182,30 +180,45 @@ const DashboardNavbar = () => {
       <div className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-4 pb-6 rounded-b-3xl shadow-md relative">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <button onClick={toggleSidebar}>
-              <Menu size={26} className="text-white" />
+            {/* Nút menu */}
+            <button
+              onClick={toggleSidebar}
+              className="text-white hover:text-white/80 transition"
+            >
+              <Menu size={24} />
             </button>
-            <img
-              src={user?.avatar || avatar} // Sử dụng avatar từ user state nếu có
-              alt="avatar"
-              className="w-12 h-12 rounded-full border-2 border-white"
-            />
-            <div>
-              <h2 className="font-semibold text-sm">
+
+            {/* Avatar + khung */}
+            <div className="relative">
+              <img
+                src={user?.avatar || avatar}
+                alt="avatar"
+                className="w-12 h-12 rounded-full border-2 border-white shadow-lg object-cover"
+              />
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border border-white" />
+            </div>
+
+            {/* Thông tin người dùng */}
+            <div className="flex flex-col justify-center">
+              <h2 className="font-semibold text-base">
                 {user?.name || "Người dùng"}
               </h2>
-              <p className="text-xs text-white">
-                Đã chi: {totalSpent.toLocaleString()} đ{" "}
-                {/* HIỂN THỊ TOTALSPENT */}
-                {spendingLimit > 0 && (
-                  <>
-                    {" "}
-                    / {spendingLimit.toLocaleString()} đ / {months} tháng
-                  </>
-                )}{" "}
-                - Số dư: {totalIncome.toLocaleString()} đ{" "}
-                {/* TOTALINCOME GIỜ LÀ SỐ DƯ */}
-              </p>
+              <div className="text-sm text-white/90 leading-snug">
+                <div>
+                  <span className="font-medium text-white">Đã chi:</span>{" "}
+                  {totalSpent.toLocaleString()} đ
+                  {spendingLimit > 0 && (
+                    <>
+                      {" "}
+                      / {spendingLimit.toLocaleString()} đ / {months} tháng
+                    </>
+                  )}
+                </div>
+                <div>
+                  <span className="font-medium text-white">Số dư:</span>{" "}
+                  {totalIncome.toLocaleString()} đ
+                </div>
+              </div>
             </div>
           </div>
 
@@ -300,7 +313,13 @@ const DashboardNavbar = () => {
             <li className="flex items-center gap-3 p-2 rounded hover:bg-white/20 cursor-pointer transition-colors duration-200">
               <QrCode size={16} /> QR Code
             </li>
-            <li className="flex items-center gap-3 p-2 rounded hover:bg-white/20 cursor-pointer transition-colors duration-200">
+            <li
+              className="flex items-center gap-3 p-2 rounded hover:bg-white/20 cursor-pointer transition-colors duration-200"
+              onClick={() => {
+                setSidebarOpen(false);
+                navigate("/transactions");
+              }}
+            >
               <History size={16} /> Lịch sử giao dịch
             </li>
             <li className="flex items-center gap-3 p-2 rounded hover:bg-white/20 cursor-pointer transition-colors duration-200">

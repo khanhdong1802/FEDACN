@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { X } from "lucide-react"; // Bỏ ChevronDown nếu không dùng cho Phương Thức
+import { X } from "lucide-react";
 import CategoryCard from "./CategoryCard";
 import avatarDefault from "../assets/avatar.jpg";
 import axios from "axios";
 
 // Đổi tên prop onWithdrawSuccess thành onTransactionRecorded cho nhất quán
-const RecordModal = ({ onClose, onTransactionRecorded }) => {
+const RecordModal = ({
+  onClose,
+  onTransactionRecorded,
+  selectedCategoryId,
+}) => {
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(selectedCategoryId || "");
   const [categories, setCategories] = useState([]);
 
   const [paymentMethod, setPaymentMethod] = useState("personalFund");
@@ -44,7 +48,7 @@ const RecordModal = ({ onClose, onTransactionRecorded }) => {
     }
 
     axios
-      .get("http://localhost:3000/api/auth/categories")
+      .get("http://localhost:3000/api/categories")
       .then((res) => setCategories(res.data))
       .catch(() => setCategories([]));
   }, []);
@@ -106,6 +110,11 @@ const RecordModal = ({ onClose, onTransactionRecorded }) => {
     }
   }, [selectedGroupId, paymentMethod]);
 
+  // Nếu selectedCategoryId thay đổi khi mở modal, cập nhật state
+  useEffect(() => {
+    if (selectedCategoryId) setCategory(selectedCategoryId);
+  }, [selectedCategoryId]);
+
   const handleCategoryClick = (id) => setCategory(id);
 
   const handleSaveTransaction = async () => {
@@ -165,12 +174,12 @@ const RecordModal = ({ onClose, onTransactionRecorded }) => {
         }
 
         await axios.post("http://localhost:3000/api/auth/group-expenses", {
-          fund_id: fundIdForCategorization, // ID của quỹ mặc định/chung để phân loại
-          user_making_expense_id: loggedInUser._id, // User ID của người thực hiện
-          amount: transactionAmount,
+          fund_id: fundIdForCategorization,
+          user_making_expense_id: loggedInUser._id,
           date: date,
           description: description,
           category_id: category,
+          amount: transactionAmount,
         });
         const selectedGroup = availableGroups.find(
           (g) => g._id === selectedGroupId
@@ -187,7 +196,6 @@ const RecordModal = ({ onClose, onTransactionRecorded }) => {
         return;
       }
 
-      // Đổi tên onWithdrawSuccess thành onTransactionRecorded cho nhất quán
       if (onTransactionRecorded) {
         onTransactionRecorded(
           successMessage,

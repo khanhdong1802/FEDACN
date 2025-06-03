@@ -92,9 +92,7 @@ const FloatingButton = ({
       {showRecordModal && (
         <RecordModal
           onClose={() => setShowRecordModal(false)}
-          // RecordModal sẽ gọi onTransactionRecorded(message, personalBalanceDelta, transactionType)
-          onTransactionRecorded={handleActionComplete}
-          currentGroupId={groupId} // Truyền groupId để RecordModal biết ngữ cảnh nhóm (nếu có)
+          onTransactionRecorded={onSuccess} // callback cập nhật lịch sử
         />
       )}
 

@@ -47,18 +47,24 @@ const SettingsPage = () => {
       // Không gửi confirmPassword lên backend
       const { confirmPassword, ...submitForm } = form;
 
-      const res = await fetch(`http://localhost:3000/api/auth/update/${user._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(submitForm),
-      });
+      const res = await fetch(
+        `http://localhost:3000/api/users/update/${user._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(submitForm),
+        }
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Cập nhật thất bại");
 
       // Cập nhật lại localStorage nếu thành công
-      localStorage.setItem("user", JSON.stringify({ ...user, name: form.name, email: form.email }));
+      localStorage.setItem(
+        "user",
+        JSON.stringify({ ...user, name: form.name, email: form.email })
+      );
       setMessage("Cập nhật thành công!");
       setForm({ ...form, password: "", confirmPassword: "" }); // Xóa mật khẩu sau khi lưu
     } catch (err) {
@@ -106,7 +112,9 @@ const SettingsPage = () => {
           />
         </div>
         <div>
-          <label className="block mb-1 font-medium">Xác nhận mật khẩu mới</label>
+          <label className="block mb-1 font-medium">
+            Xác nhận mật khẩu mới
+          </label>
           <input
             type="password"
             name="confirmPassword"
@@ -124,7 +132,9 @@ const SettingsPage = () => {
           {loading ? "Đang lưu..." : "Lưu thay đổi"}
         </button>
         {message && (
-          <div className="mt-2 text-center text-sm text-green-600">{message}</div>
+          <div className="mt-2 text-center text-sm text-green-600">
+            {message}
+          </div>
         )}
       </form>
     </div>

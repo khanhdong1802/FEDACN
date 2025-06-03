@@ -12,6 +12,7 @@ import DashboardPage from "./pages/DashboardPage";
 import GroupDashboardPage from "./pages/GroupDashboardPage";
 import DashboardNavbar from "./components/DashboardNavbar";
 import SettingsPage from "./pages/SettingsPage";
+import TransactionHistoryPage from "./pages/TransactionHistoryPage";
 
 const HomePage = () => {
   return (
@@ -72,6 +73,7 @@ function App() {
         />
         {/* Các trang khác */}
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/transactions" element={<TransactionHistoryPage />} />
       </Routes>
     </div>
   );
