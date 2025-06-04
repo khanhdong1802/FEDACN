@@ -14,8 +14,8 @@ export default function GroupDashboardPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [groupTransactionHistory, setGroupTransactionHistory] = useState([]);
   const [visibleCount, setVisibleCount] = useState(5);
-  const initialVisibleCount = 5; 
-  const incrementCount = 10;  
+  const initialVisibleCount = 5;
+  const incrementCount = 10;
 
   const fetchGroupData = useCallback(async () => {
     setLoading(true);
@@ -51,7 +51,7 @@ export default function GroupDashboardPage() {
         totalSpent: actualBalanceData.totalSpent,
       });
 
-      const resCats = await fetch(`http://localhost:3000/api/categories`);
+      const resCats = await fetch(`http://localhost:3000/api/admin/categories`);
       if (!resCats.ok) throw new Error(`Categories status ${resCats.status}`);
       const catData = await resCats.json();
       setCategories(catData);

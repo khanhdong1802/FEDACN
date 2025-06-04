@@ -48,7 +48,7 @@ const RecordModal = ({
     }
 
     axios
-      .get("http://localhost:3000/api/categories")
+      .get("http://localhost:3000/api/admin/categories")
       .then((res) => setCategories(res.data))
       .catch(() => setCategories([]));
   }, []);
@@ -202,7 +202,7 @@ const RecordModal = ({
           personalBalanceDelta,
           transactionType
         );
-      } 
+      }
       alert("Ghi chép thành công!");
       onClose();
     } catch (err) {

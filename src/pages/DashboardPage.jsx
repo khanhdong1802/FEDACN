@@ -13,14 +13,14 @@ export default function DashboardPage() {
 
   // NEW: State cho hiển thị phân trang giao dịch
   const [visibleCount, setVisibleCount] = useState(5);
-  const initialVisibleCount = 5; 
-  const incrementCount = 10;  
+  const initialVisibleCount = 5;
+  const incrementCount = 10;
 
   // Fetch danh mục
   useEffect(() => {
     const fetchCats = async () => {
       try {
-        const res = await fetch("http://localhost:3000/api/categories");
+        const res = await fetch("http://localhost:3000/api/admin/categories");
         if (!res.ok) throw new Error(`Status ${res.status}`);
         const data = await res.json();
         setCategories(data);

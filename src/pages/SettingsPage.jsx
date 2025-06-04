@@ -48,7 +48,7 @@ const SettingsPage = () => {
       const { confirmPassword, ...submitForm } = form;
 
       const res = await fetch(
-        `http://localhost:3000/api/users/update/${user._id}`,
+        `http://localhost:3000/api/admin/users/update/${user._id}`,
         {
           method: "PUT",
           headers: {

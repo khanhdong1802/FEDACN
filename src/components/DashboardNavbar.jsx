@@ -322,7 +322,13 @@ const DashboardNavbar = () => {
             >
               <History size={16} /> Lịch sử giao dịch
             </li>
-            <li className="flex items-center gap-3 p-2 rounded hover:bg-white/20 cursor-pointer transition-colors duration-200">
+            <li
+              className="flex items-center gap-3 p-2 rounded hover:bg-white/20 cursor-pointer transition-colors duration-200"
+              onClick={() => {
+                setSidebarOpen(false);
+                navigate("/stats");
+              }}
+            >
               <BarChart size={16} /> Thống kê
             </li>
             <li

@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
 import { format, subDays, addDays, isSameDay } from "date-fns";
 import vi from "date-fns/locale/vi";
-import BalanceLineChart from "../components/BalanceLineChart";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 function TransactionHistoryHeader({
   onTabChange,
@@ -29,7 +30,7 @@ function TransactionHistoryHeader({
         ))}
       </div>
       <div className="flex gap-2">
-        {["Tất cả", "Nạp", "Rút", "Chi tiêu", "Đóng góp"].map((type) => (
+        {["Tất cả", "Nạp", "Chi tiêu"].map((type) => (
           <button
             key={type}
             className={`px-2 py-1 rounded text-xs ${
@@ -206,9 +207,6 @@ export default function TransactionHistoryPage() {
   const [typeFilter, setTypeFilter] = useState("Tất cả");
   const navigate = useNavigate();
 
-  //DỮ LIỆU BIỂU ĐỒ
-  const [balanceChartData, setBalanceChartData] = useState(null);
-
   // Lấy userId từ localStorage
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
@@ -236,9 +234,34 @@ export default function TransactionHistoryPage() {
     days.push(addDays(selectedDate, i));
   }
 
-  // Xuất CSV (giả lập)
+  // Xuất CSV
   const handleExportCSV = () => {
-    alert("Tính năng xuất CSV đang phát triển!");
+    const data = filteredTransactions.map((tx, index) => ({
+      STT: index + 1,
+      Ngày: tx.transaction_date
+        ? new Date(tx.transaction_date).toLocaleString("vi-VN")
+        : "",
+      "Loại Giao dịch": tx.transaction_type,
+      Số_tiền: tx.amount,
+      Mô_tả: tx.description || "",
+      "Trạng thái":
+        tx.status === "approved"
+          ? "Đã duyệt"
+          : tx.status === "pending"
+          ? "Chờ duyệt"
+          : tx.status || "Khác",
+      "Người thực hiện": tx.user_id?.name || "Không rõ",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "GiaoDich");
+
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    saveAs(
+      new Blob([wbout], { type: "application/octet-stream" }),
+      "lich_su_giao_dich.xlsx"
+    );
   };
 
   // Lọc giao dịch theo tab và loại
@@ -246,89 +269,19 @@ export default function TransactionHistoryPage() {
     // Lọc theo tab
     if (tab === "Cá nhân" && tx.group_id) return false;
     if (tab === "Nhóm" && !tx.group_id) return false;
+
     // Lọc theo loại
-    if (
-      typeFilter !== "Tất cả" &&
-      tx.transaction_type !== typeFilter.toLowerCase()
-    )
-      return false;
+    if (typeFilter === "Nạp") {
+      // Chỉ lấy income
+      return tx.transaction_type === "income";
+    }
+    if (typeFilter === "Chi tiêu") {
+      // Lấy expense của cả cá nhân và nhóm
+      return tx.transaction_type === "expense";
+    }
+    // typeFilter === "Tất cả"
     return true;
   });
-
-  useEffect(() => {
-    // Chỉ tạo dữ liệu biểu đồ cho tab "Cá nhân" và khi có giao dịch
-    if (tab === "Cá nhân" && filteredTransactions.length > 0) {
-      // Sắp xếp giao dịch theo thời gian tăng dần
-      const sortedTx = [...filteredTransactions].sort(
-        (a, b) => new Date(a.transaction_date) - new Date(b.transaction_date)
-      );
-
-      let currentBalance = 0; // Bắt đầu số dư từ 0 cho ngày này (hoặc bạn có thể fetch số dư đầu ngày nếu có API)
-      const labels = ["Đầu ngày"]; // Điểm bắt đầu
-      const dataPoints = [0]; // Số dư tại điểm bắt đầu
-
-      sortedTx.forEach((tx) => {
-        let amountChange = 0;
-        // Logic xác định thay đổi số dư cá nhân (tương tự DashboardPage)
-        if (tx.transaction_type === "income") {
-          amountChange = tx.amount;
-        } else if (
-          tx.transaction_type === "expense" ||
-          tx.transaction_type === "withdraw"
-        ) {
-          amountChange = -tx.amount; // Giao dịch chi tiêu làm giảm số dư
-        } else if (tx.transaction_type === "contribution" && tx.group_id) {
-          // Đóng góp vào nhóm cũng là chi từ tài khoản cá nhân
-          amountChange = -tx.amount;
-        }
-        // Bỏ qua các loại không ảnh hưởng trực tiếp đến số dư cá nhân như groupExpense từ quỹ nhóm
-
-        if (amountChange !== 0) {
-          // Chỉ thêm điểm nếu có thay đổi số dư thực sự
-          currentBalance += amountChange;
-          labels.push(
-            new Date(tx.transaction_date).toLocaleTimeString("vi-VN", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          );
-          dataPoints.push(currentBalance);
-        }
-      });
-
-      setBalanceChartData({
-        labels: labels,
-        datasets: [
-          {
-            label: `Biến động số dư ngày ${format(selectedDate, "dd/MM/yyyy")}`,
-            data: dataPoints,
-            fill: true, // Cho phép tô màu vùng dưới đường line
-            borderColor: "rgb(167, 139, 250)", // Màu tím nhạt cho đường line
-            backgroundColor: (context) => {
-              // Hàm tạo gradient
-              const ctx = context.chart.ctx;
-              if (!ctx) return null;
-              const gradient = ctx.createLinearGradient(
-                0,
-                0,
-                0,
-                context.chart.height * 0.8
-              ); // Chiều cao gradient
-              gradient.addColorStop(0, "rgba(167, 139, 250, 0.5)"); // Màu tím nhạt ở trên
-              gradient.addColorStop(1, "rgba(167, 139, 250, 0.05)"); // Trong suốt dần về dưới
-              return gradient;
-            },
-            tension: 0.3, // Độ cong của đường
-            pointBackgroundColor: "rgb(139, 92, 246)", // Màu điểm dữ liệu (màu tím đậm hơn)
-            pointRadius: 4,
-            pointHoverRadius: 6,
-          },
-        ],
-      });
-    } else {
-      setBalanceChartData(null); // Xóa dữ liệu biểu đồ nếu không phải tab "Cá nhân" hoặc không có giao dịch
-    }
-  }, [filteredTransactions, tab, selectedDate]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -387,15 +340,6 @@ export default function TransactionHistoryPage() {
           currentTab={tab}
           currentType={typeFilter}
         />
-
-        {/* BIỂU ĐỒ */}
-        {tab === "Cá nhân" &&
-          balanceChartData && ( // Chỉ hiển thị khi ở tab cá nhân và có dữ liệu
-            <div className="my-4 bg-white p-2 rounded-lg shadow">
-              {" "}
-              <BalanceLineChart chartData={balanceChartData} />
-            </div>
-          )}
 
         {/* Hiển thị giao dịch */}
         <TransactionList
