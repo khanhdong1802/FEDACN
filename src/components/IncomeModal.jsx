@@ -3,12 +3,7 @@ import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
 // Đảm bảo IncomeModal nhận prop onIncomeSuccess từ FloatingButton
-const IncomeModal = ({
-  onClose,
-  onSuccess,
-  groupId,
-  onIncomeSuccessCallback,
-}) => {
+const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
   const [mode, setMode] = useState("personal");
   const [groups, setGroups] = useState([]);
   const [groupFunds, setGroupFunds] = useState([]);
@@ -174,11 +169,8 @@ const IncomeModal = ({
 
       if (response.ok) {
         alert(successMessage); // Thông báo cho người dùng
-
-        // Gọi onIncomeSuccess (sẽ được truyền từ FloatingButton -> DashboardNavbar)
-        // để cập nhật thông báo và số dư cá nhân trên DashboardNavbar
-        if (onIncomeSuccessCallback) {
-          onIncomeSuccessCallback(
+        if (onIncomeSuccess) {
+          onIncomeSuccess(
             successMessage,
             amountDeltaForNavbar,
             transactionType

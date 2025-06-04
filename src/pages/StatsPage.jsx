@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import BalanceLineChart from "../components/BalanceLineChart";
@@ -223,18 +223,69 @@ export default function StatsPage() {
 
   // Tính tổng chi tiêu theo danh mục hôm nay (giữ nguyên)
   const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const categoriesWithSpent = categories.map((cat) => {
-    const spent = transactions
-      .filter(
-        (tx) =>
-          tx.category_id === cat._id &&
-          tx.transaction_type === "expense" &&
-          new Date(tx.transaction_date).toISOString().slice(0, 10) === todayStr
-      )
-      .reduce((sum, tx) => sum + tx.amount, 0);
-    return { ...cat, spent };
-  });
+  const categoriesWithSpent = useMemo(() => {
+    if (!categories.length || !transactions.length) {
+      return [];
+    }
+
+    // Xác định ngày hôm nay
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10); 
+
+    return categories.map((cat) => {
+      const spentAmount = transactions
+        .filter((tx) => {
+          // 1. LỌC CHÍNH XÁC THEO NGÀY HÔM NAY
+          const txDateStr = new Date(tx.transaction_date)
+            .toISOString()
+            .slice(0, 10);
+          if (txDateStr !== todayStr) {
+            return false; // Quan trọng: Bỏ qua giao dịch không phải của ngày hôm nay
+          }
+
+          // 2. Lọc theo tab "Cá nhân" hoặc "Nhóm" (giữ nguyên logic này)
+          if (mainTab === "Cá nhân" && tx.group_id) return false;
+          if (
+            mainTab === "Nhóm" &&
+            (!tx.group_id ||
+              tx.transaction_type?.toLowerCase() !== "groupexpense")
+          ) {
+            if (tx.transaction_type?.toLowerCase() !== "groupexpense")
+              return false;
+          }
+
+          // 3. Lọc theo category_id (giữ nguyên logic này)
+          const txCategoryId =
+            typeof tx.category_id === "object" && tx.category_id !== null
+              ? tx.category_id._id
+              : tx.category_id;
+          if (txCategoryId !== cat._id) return false;
+
+          // 4. Xác định các loại giao dịch được coi là "chi tiêu" (giữ nguyên logic này)
+          let isSpendingTransaction = false;
+          const type = tx.transaction_type?.toLowerCase();
+
+          if (mainTab === "Cá nhân") {
+            if (
+              type === "expense" ||
+              type === "withdraw" ||
+              (type === "contribution" && tx.group_id)
+            ) {
+              isSpendingTransaction = true;
+            }
+          } else if (mainTab === "Nhóm") {
+            // Chỉ tính 'groupexpense' là chi tiêu khi ở tab Nhóm
+            if (type === "groupexpense") {
+              isSpendingTransaction = true;
+            }
+          }
+          return isSpendingTransaction;
+        })
+        .reduce((sum, tx) => sum + (tx.amount || 0), 0);
+
+      return { ...cat, spent: spentAmount };
+    });
+  }, [transactions, categories, mainTab]);
 
   // Màu sắc cho các danh mục (tùy chỉnh theo số lượng danh mục)
   const pieColors = [
@@ -349,15 +400,21 @@ export default function StatsPage() {
           </button>
         </div>
         {/* Danh sách chi tiêu theo danh mục */}
-        {tab === "Chi tiêu" && (
+        {tab === "Chi tiêu" && ( 
           <div>
+            <h3 className="text-md font-semibold my-3 px-4 text-gray-700">
+              Chi tiêu hôm nay theo danh mục
+              {mainTab !== "Tất cả" && (
+                <span className="text-purple-600"> ({mainTab})</span>
+              )}
+            </h3>
             {categoriesWithSpent.map((cat) => (
               <div
                 key={cat._id}
-                className="flex items-center px-4 py-3 border-b last:border-b-0"
+                className="flex items-center px-4 py-3 border-b last:border-b-0 bg-white mx-2 mb-1 rounded-lg shadow-sm" // Thêm style cho đẹp hơn
               >
                 <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 mr-3 text-2xl">
-                  {cat.icon}
+                  {cat.icon || "📁"}
                 </div>
                 <div className="flex-1">
                   <div className="font-medium text-gray-800">{cat.name}</div>
@@ -368,7 +425,12 @@ export default function StatsPage() {
                       : "Không giới hạn"}
                   </div>
                 </div>
-                <div className="font-semibold text-gray-700">
+                <div
+                  className={`font-semibold ${
+                    cat.spent > 0 ? "text-red-600" : "text-gray-700"
+                  }`}
+                >
+                  {cat.spent > 0 ? "-" : ""}
                   {cat.spent ? cat.spent.toLocaleString() : 0} đ
                 </div>
               </div>

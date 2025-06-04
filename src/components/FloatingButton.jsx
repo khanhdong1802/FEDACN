@@ -23,8 +23,6 @@ const FloatingButton = ({
   const userId = user?._id;
 
   // Hàm chung để xử lý sau khi một hành động trong modal hoàn tất
-  // Nó sẽ gọi onSuccess (nếu có, thường từ GroupDashboardPage để fetch lại data nhóm)
-  // và sau đó gọi onNewRecord hoặc onIncomeSuccess (từ DashboardNavbar để cập nhật thông báo/số dư cá nhân)
   const handleActionComplete = (message, amountDelta, transactionType) => {
     if (onSuccess) {
       onSuccess();
@@ -33,7 +31,6 @@ const FloatingButton = ({
     if (transactionType === "personalIncome" && onIncomeSuccess) {
       onIncomeSuccess(message, amountDelta, transactionType);
     } else if (transactionType && onNewRecord) {
-      // "personal" (chi tiêu cá nhân) hoặc "groupFundDirect" (chi từ quỹ nhóm)
       onNewRecord(message, amountDelta, transactionType); // << Quan trọng ở đây
     }
   };
@@ -41,6 +38,14 @@ const FloatingButton = ({
   // Hàm xử lý riêng cho IncomeModal để đảm bảo đúng transactionType
   const handleIncomeModalSuccess = (message, amountAdded) => {
     handleActionComplete(message, amountAdded, "personalIncome");
+  };
+  const handleRecordModalRecorded = (
+    message,
+    amountDelta,
+    transactionTypeFromModal
+  ) => {
+    // transactionTypeFromModal sẽ là "personal" hoặc "groupFundDirect" từ RecordModal
+    handleActionComplete(message, amountDelta, transactionTypeFromModal);
   };
 
   const actions = [
@@ -92,7 +97,7 @@ const FloatingButton = ({
       {showRecordModal && (
         <RecordModal
           onClose={() => setShowRecordModal(false)}
-          onTransactionRecorded={onSuccess} // callback cập nhật lịch sử
+          onTransactionRecorded={handleRecordModalRecorded} // callback cập nhật lịch sử
         />
       )}
 

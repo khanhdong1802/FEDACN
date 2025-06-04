@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import CategoryCard from "../components/CategoryCard";
 import RecordModal from "../components/RecordModal";
-import FloatingButton from "../components/FloatingButton";
 
 export default function DashboardPage() {
   const [categories, setCategories] = useState([]);
@@ -219,7 +218,6 @@ export default function DashboardPage() {
       </div>
 
       {/* Nút thêm ghi chép */}
-      <FloatingButton onSuccess={fetchTransactionHistory} />
 
       {/* RecordModal */}
       {showRecordModal && (
