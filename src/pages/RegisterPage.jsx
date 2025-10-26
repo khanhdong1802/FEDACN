@@ -20,7 +20,7 @@ export default function RegisterPage() {
     e.preventDefault();
     try {
       const res = await axios.post(
-        "http://localhost:3000/api/auth/register",
+        "https://bedacn.onrender.com/api/auth/register",
         form
       );
       alert(res.data.message); // Hiển thị thông báo thành công

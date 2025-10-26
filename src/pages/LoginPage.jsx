@@ -11,10 +11,13 @@ export default function LoginPage() {
     e.preventDefault();
 
     try {
-      const res = await axios.post("http://localhost:3000/api/auth/login", {
-        email,
-        password,
-      });
+      const res = await axios.post(
+        "https://bedacn.onrender.com/api/auth/login",
+        {
+          email,
+          password,
+        }
+      );
 
       const { message, accessToken, user } = res.data;
 
