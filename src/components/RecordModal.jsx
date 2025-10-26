@@ -1,10 +1,67 @@
 import React, { useState, useEffect } from "react";
-import { X } from "lucide-react";
-import CategoryCard from "./CategoryCard";
-import avatarDefault from "../assets/avatar.jpg";
+import {
+  X,
+  GraduationCap,
+  Utensils,
+  Bed,
+  Home,
+  Car,
+  Calculator,
+} from "lucide-react";
 import axios from "axios";
+import { format } from "date-fns";
+import avatarDefault from "../assets/avatar.jpg";
 
-// Đổi tên prop onWithdrawSuccess thành onTransactionRecorded cho nhất quán
+// local small helpers to avoid missing ui/* and lib/utils imports
+const cn = (...classes) => classes.filter(Boolean).join(" ");
+
+const Button = ({ children, className = "", variant, ...rest }) => (
+  <button
+    {...rest}
+    className={cn(
+      "inline-flex items-center justify-center px-3 py-1.5 rounded-md",
+      className
+    )}
+  >
+    {children}
+  </button>
+);
+
+const Input = ({ className = "", ...props }) => (
+  <input {...props} className={cn("px-3 py-2 rounded-md w-full", className)} />
+);
+
+const Label = ({ children, className = "" }) => (
+  <label className={cn("block text-sm font-medium mb-1", className)}>
+    {children}
+  </label>
+);
+
+const Textarea = ({ className = "", ...props }) => (
+  <textarea
+    {...props}
+    className={cn("px-3 py-2 rounded-md w-full", className)}
+  />
+);
+
+const iconMap = {
+  "Học phí": GraduationCap,
+  "Thức ăn": Utensils,
+  "Tiền ngu": Bed,
+  "Tiền nhà": Home,
+  "Đi lại": Car,
+  "Đồ dùng": Calculator,
+};
+
+const gradientMap = {
+  "Học phí": "from-purple-500 to-purple-600",
+  "Thức ăn": "from-pink-500 to-rose-500",
+  "Tiền ngu": "from-blue-500 to-cyan-500",
+  "Tiền nhà": "from-orange-500 to-amber-500",
+  "Đi lại": "from-cyan-500 to-teal-500",
+  "Đồ dùng": "from-indigo-500 to-violet-500",
+};
+
 const RecordModal = ({
   onClose,
   onTransactionRecorded,
@@ -12,26 +69,22 @@ const RecordModal = ({
 }) => {
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(new Date());
   const [category, setCategory] = useState(selectedCategoryId || "");
   const [categories, setCategories] = useState([]);
-
   const [paymentMethod, setPaymentMethod] = useState("personalFund");
   const [loggedInUser, setLoggedInUser] = useState(null);
 
-  // State cho Nhóm
+  // Group-related states (kept but minimal)
   const [availableGroups, setAvailableGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [selectedGroupActualBalance, setSelectedGroupActualBalance] =
     useState(0);
   const [loadingGroupBalance, setLoadingGroupBalance] = useState(false);
-
-  // State để lưu fund_id sẽ được dùng để ghi chú/phân loại khi chi tiêu nhóm
-  // Vì GroupExpenseSchema yêu cầu fund_id
   const [fundIdForCategorization, setFundIdForCategorization] = useState("");
   const [categorizationFundName, setCategorizationFundName] = useState("");
 
-  const [selectedTab, setSelectedTab] = useState("category");
+  const [tabValue, setTabValue] = useState("category");
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -41,45 +94,32 @@ const RecordModal = ({
 
       axios
         .get(`http://localhost:3000/api/auth/groups?userId=${parsedUser._id}`)
-        .then((res) => {
-          setAvailableGroups(res.data.groups || []);
-        })
-        .catch((err) => console.error("Lỗi lấy danh sách nhóm:", err));
+        .then((res) => setAvailableGroups(res.data.groups || []))
+        .catch(() => setAvailableGroups([]));
     }
 
     axios
       .get("http://localhost:3000/api/admin/categories")
-      .then((res) => setCategories(res.data))
+      .then((res) => setCategories(res.data || []))
       .catch(() => setCategories([]));
   }, []);
 
-  // Khi chọn nhóm hoặc đổi phương thức thanh toán
   useEffect(() => {
-    setSelectedGroupActualBalance(0);
-    setFundIdForCategorization("");
-    setCategorizationFundName("");
+    // when selectedCategoryId prop changes (opened from elsewhere)
+    if (selectedCategoryId) setCategory(selectedCategoryId);
+  }, [selectedCategoryId]);
 
+  useEffect(() => {
     if (selectedGroupId && paymentMethod === "groupFund") {
       setLoadingGroupBalance(true);
       axios
         .get(
           `http://localhost:3000/api/auth/groups/${selectedGroupId}/actual-balance`
         )
-        .then((res) => {
-          console.log("API Response for group balance:", res.data); // DEBUG LOG
-          setSelectedGroupActualBalance(res.data.balance || 0);
-        })
-        .catch((err) => {
-          console.error(
-            "Lỗi lấy số dư tổng của nhóm:",
-            err.response ? err.response.data : err.message
-          ); // DEBUG LOG
-          setSelectedGroupActualBalance(0);
-        })
+        .then((res) => setSelectedGroupActualBalance(res.data.balance || 0))
+        .catch(() => setSelectedGroupActualBalance(0))
         .finally(() => setLoadingGroupBalance(false));
 
-      // Lấy quỹ đầu tiên của nhóm (hoặc quỹ tên "Quỹ chung") để dùng cho fund_id khi tạo GroupExpense
-      // vì GroupExpenseSchema yêu cầu fund_id. Mục đích chính là để phân loại.
       axios
         .get(
           `http://localhost:3000/api/auth/group-funds?groupId=${selectedGroupId}`
@@ -92,28 +132,24 @@ const RecordModal = ({
                 f.name.toLowerCase().includes("chung") ||
                 f.name.toLowerCase().includes("general")
             );
-            if (!targetFund) {
-              targetFund = funds[0]; // Lấy quỹ đầu tiên nếu không có "Quỹ chung"
-            }
+            if (!targetFund) targetFund = funds[0];
             setFundIdForCategorization(targetFund._id);
             setCategorizationFundName(targetFund.name);
           } else {
-            // Nếu nhóm không có quỹ nào, cần xử lý (ví dụ: không cho phép chi tiêu nhóm)
-            // Hoặc backend cho phép tạo GroupExpense mà không cần fund_id nếu đó là chi tiêu chung của nhóm
-            // Hiện tại, GroupExpenseSchema yêu cầu fund_id
-            console.warn(
-              "Nhóm này không có quỹ nào để dùng cho việc phân loại chi tiêu."
-            );
+            setFundIdForCategorization("");
+            setCategorizationFundName("");
           }
         })
-        .catch((err) => console.error("Lỗi lấy quỹ để phân loại:", err));
+        .catch(() => {
+          setFundIdForCategorization("");
+          setCategorizationFundName("");
+        });
+    } else {
+      setSelectedGroupActualBalance(0);
+      setFundIdForCategorization("");
+      setCategorizationFundName("");
     }
   }, [selectedGroupId, paymentMethod]);
-
-  // Nếu selectedCategoryId thay đổi khi mở modal, cập nhật state
-  useEffect(() => {
-    if (selectedCategoryId) setCategory(selectedCategoryId);
-  }, [selectedCategoryId]);
 
   const handleCategoryClick = (id) => setCategory(id);
 
@@ -148,7 +184,7 @@ const RecordModal = ({
           category_id: category,
           source: categoryName,
           note: description,
-          transaction_date: date,
+          transaction_date: format(date, "yyyy-MM-dd"),
           payment_method: paymentMethod,
         });
         successMessage = `Ghi chi tiêu (Cá nhân): ${
@@ -161,14 +197,12 @@ const RecordModal = ({
           return;
         }
         if (!fundIdForCategorization) {
-          alert(
-            "Nhóm này cần có ít nhất một quỹ (ví dụ: 'Quỹ chung') để có thể ghi nhận chi tiêu theo yêu cầu của hệ thống. Vui lòng tạo quỹ cho nhóm."
-          );
+          alert("Nhóm cần có quỹ để phân loại chi tiêu.");
           return;
         }
         if (transactionAmount > selectedGroupActualBalance) {
           alert(
-            `Số dư tài khoản nhóm không đủ! Số dư hiện tại của nhóm: ${selectedGroupActualBalance.toLocaleString()} đ`
+            `Số dư nhóm không đủ: ${selectedGroupActualBalance.toLocaleString()} đ`
           );
           return;
         }
@@ -176,17 +210,18 @@ const RecordModal = ({
         await axios.post("http://localhost:3000/api/auth/group-expenses", {
           fund_id: fundIdForCategorization,
           user_making_expense_id: loggedInUser._id,
-          date: date,
+          date: format(date, "yyyy-MM-dd"),
           description: description,
           category_id: category,
           amount: transactionAmount,
         });
+
         const selectedGroup = availableGroups.find(
           (g) => g._id === selectedGroupId
         );
-        successMessage = `Chi từ tài khoản nhóm ${
+        successMessage = `Chi từ nhóm ${
           selectedGroup?.name || ""
-        } (Phân loại vào quỹ: ${categorizationFundName}): ${
+        } (quỹ: ${categorizationFundName}): ${
           description || categoryName
         } - ${transactionAmount.toLocaleString()} đ.`;
         transactionType = "groupFundDirect";
@@ -210,201 +245,140 @@ const RecordModal = ({
         err.response?.data?.error ||
         err.response?.data?.message ||
         "Lỗi không xác định";
-      console.error(
-        `Lỗi khi ghi chép (${paymentMethod}):`,
-        errorMessage,
-        err.response
-      );
+      console.error("Lỗi khi ghi chép:", err);
       alert(`Ghi chép thất bại: ${errorMessage}`);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50">
-      <div className="bg-white w-full max-w-md rounded-t-2xl p-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div
+        className="w-full max-w-sm mx-4 rounded-2xl p-6 shadow-xl animate-scale-in bg-white"
+        style={{
+          maxHeight: "80%", // Giới hạn chiều cao của modal để không chiếm quá nhiều không gian
+          overflowY: "auto",
+        }}
+      >
         {/* Header */}
-        <div className="flex justify-between items-center border-b pb-2 mb-2">
-          <button onClick={onClose}>
-            <X size={24} />
-          </button>
-          <h1 className="text-lg font-medium">Ghi chép</h1>
+        <div className="flex items-center justify-between mb-4">
           <button
-            className="text-purple-600 font-medium"
+            onClick={onClose}
+            className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <h3 className="text-lg font-semibold">Ghi chép</h3>
+          <Button
             onClick={handleSaveTransaction}
+            className="text-sm bg-indigo-600 text-white"
           >
             Lưu
-          </button>
+          </Button>
         </div>
 
-        {/* Phương Thức */}
-        <div className="flex justify-between items-center border-b py-3 mb-3">
-          <span className="text-gray-600 font-medium">Phương Thức</span>
+        {/* Phương thức và các thông tin khác */}
+        <div className="mb-4">
+          <Label>Phương thức</Label>
           <select
             value={paymentMethod}
             onChange={(e) => {
-              setPaymentMethod(e.target.value);
-              if (e.target.value === "personalFund") {
-                setSelectedGroupId("");
-              }
+              const v = e.target.value;
+              setPaymentMethod(v);
+              if (v === "personalFund") setSelectedGroupId("");
             }}
-            className="text-sm text-gray-700 outline-none p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full glass-card border-none p-2 rounded-md"
           >
             <option value="personalFund">Tiền cá nhân</option>
             <option value="groupFund">Chi tiêu nhóm</option>
           </select>
         </div>
 
-        {/* Tab lựa chọn */}
-        <div className="flex justify-center gap-4 mb-4">
-          <button
-            className={`px-4 py-1 rounded-full text-sm font-medium ${
-              selectedTab === "user"
-                ? "bg-purple-100 text-purple-700"
-                : "bg-gray-100 text-gray-600"
-            }`}
-            onClick={() => setSelectedTab("user")}
-          >
-            {paymentMethod === "groupFund" ? "Chọn Nhóm" : "Người sử dụng"}
-          </button>
-          <button
-            className={`px-4 py-1 rounded-full text-sm font-medium ${
-              selectedTab === "category"
-                ? "bg-purple-100 text-purple-700"
-                : "bg-gray-100 text-gray-600"
-            }`}
-            onClick={() => setSelectedTab("category")}
-          >
-            Danh mục
-          </button>
+        {/* Danh mục */}
+        <div className="mb-4">
+          <Label className="mb-3">Danh mục</Label>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {categories.map((cat) => {
+              const IconComp = iconMap[cat.name] || Calculator;
+              const gradient =
+                gradientMap[cat.name] || "from-gray-300 to-gray-400";
+              const isSelected = category === cat._id;
+              return (
+                <button
+                  key={cat._id}
+                  onClick={() => handleCategoryClick(cat._id)}
+                  className={cn(
+                    "flex-shrink-0 flex flex-col items-center gap-2",
+                    "focus:outline-none"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-gradient-to-br",
+                      gradient,
+                      isSelected
+                        ? "scale-105 shadow-glow"
+                        : "opacity-80 hover:opacity-100 hover:scale-105"
+                    )}
+                  >
+                    <IconComp
+                      className="w-7 h-7 text-white"
+                      strokeWidth={2.5}
+                    />
+                  </div>
+                  <span
+                    className={cn(
+                      "text-xs font-medium",
+                      isSelected ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    {cat.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Nội dung Tab */}
-        {selectedTab === "user" && (
-          <div className="mb-4">
-            {paymentMethod === "personalFund" && loggedInUser ? (
-              <>
-                <h2 className="font-semibold text-sm text-gray-600 mb-2">
-                  Thực hiện bởi (Cá nhân)
-                </h2>
-                <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-lg shadow-sm">
-                  <img
-                    src={loggedInUser.avatar || avatarDefault}
-                    alt={loggedInUser.name}
-                    className="w-10 h-10 rounded-full"
-                  />
-                  <div>
-                    <p className="font-medium text-indigo-700">
-                      {loggedInUser.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {loggedInUser.email}
-                    </p>
-                  </div>
-                </div>
-              </>
-            ) : paymentMethod === "groupFund" ? (
-              <div className="space-y-3">
-                <h2 className="font-semibold text-sm text-gray-600 mb-2">
-                  Chi Tiêu Từ Tài Khoản Nhóm
-                </h2>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 font-medium text-sm">
-                    Nhóm
-                  </span>
-                  <select
-                    value={selectedGroupId}
-                    onChange={(e) => setSelectedGroupId(e.target.value)}
-                    className="text-sm text-gray-700 outline-none p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 w-2/3"
-                    disabled={availableGroups.length === 0}
-                  >
-                    <option value="">-- Chọn nhóm --</option>
-                    {availableGroups.map((group) => (
-                      <option key={group._id} value={group._id}>
-                        {group.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedGroupId && (
-                  <>
-                    <div className="text-sm text-gray-500 mt-2">
-                      Số dư tài khoản nhóm:{" "}
-                      {loadingGroupBalance ? (
-                        "Đang tải..."
-                      ) : (
-                        <span className="font-semibold text-indigo-600">
-                          {selectedGroupActualBalance.toLocaleString()} đ
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      (Chi tiêu sẽ được phân loại vào quỹ:{" "}
-                      <span className="italic">
-                        {categorizationFundName || "Chưa xác định"}
-                      </span>
-                      )
-                    </p>
-                  </>
-                )}
-              </div>
-            ) : null}
+        {/* Số tiền */}
+        <div className="mb-4">
+          <Label>Số tiền</Label>
+          <div className="relative mt-2">
+            <Input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Nhập số tiền"
+              className="glass-card border-none pr-8"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+              đ
+            </span>
           </div>
-        )}
+        </div>
 
-        {selectedTab === "category" && (
-          <div className="mb-4">
-            <h2 className="font-semibold text-sm text-gray-600 mb-2">
-              Danh mục
-            </h2>
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {categories.map((cat) => (
-                <CategoryCard
-                  key={cat._id}
-                  icon={cat.icon || "📁"}
-                  label={cat.name}
-                  onClick={() => handleCategoryClick(cat._id)}
-                  selected={category === cat._id}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-3 mt-4">
-          <div className="flex justify-between items-center border-b py-2">
-            <span className="text-gray-500">Số tiền</span>
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                className="text-gray-700 outline-none text-right w-40 px-0 border-none bg-transparent"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Nhập số tiền"
-                min={0}
-                style={{ textAlign: "right" }}
-              />
-              <span className="text-gray-700">đ</span>
-            </div>
-          </div>
-          <div className="flex justify-between items-center border-b py-2">
-            <span className="text-gray-500">Ngày chi</span>
+        {/* Ngày */}
+        <div className="mb-4">
+          <Label>Ngày</Label>
+          <div className="mt-2">
             <input
               type="date"
-              className="text-gray-700 outline-none"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+              value={format(date, "yyyy-MM-dd")}
+              onChange={(e) => setDate(new Date(e.target.value))}
+              className="w-full glass-card border-none p-2 rounded-md"
             />
           </div>
-          <div className="border-b py-2">
-            <textarea
-              rows={2}
-              className="w-full text-sm text-gray-700 outline-none"
-              placeholder="Mô tả"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
+        </div>
+
+        {/* Mô tả */}
+        <div className="mb-2">
+          <Label>Mô tả</Label>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Thêm ghi chú..."
+            className="glass-card border-none resize-none"
+            rows={3}
+          />
         </div>
       </div>
     </div>

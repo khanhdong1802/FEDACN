@@ -1,5 +1,5 @@
 import React from "react";
-import phoneImage from "../assets/Screenshot_2025-04-10_200405-removebg-preview.png"; // Giả sử bạn có ảnh ở đây
+import phoneImage from "../assets/Screenshot 2025-06-11 212308.png";
 
 const StatisticSection = () => {
   return (

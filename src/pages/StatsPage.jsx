@@ -230,7 +230,7 @@ export default function StatsPage() {
 
     // Xác định ngày hôm nay
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10); 
+    const todayStr = now.toISOString().slice(0, 10);
 
     return categories.map((cat) => {
       const spentAmount = transactions
@@ -400,18 +400,16 @@ export default function StatsPage() {
           </button>
         </div>
         {/* Danh sách chi tiêu theo danh mục */}
-        {tab === "Chi tiêu" && ( 
+        {tab === "Chi tiêu" && (
           <div>
             <h3 className="text-md font-semibold my-3 px-4 text-gray-700">
               Chi tiêu hôm nay theo danh mục
-              {mainTab !== "Tất cả" && (
-                <span className="text-purple-600"> ({mainTab})</span>
-              )}
+              <span className="text-purple-600"> (Cá nhân)</span>
             </h3>
             {categoriesWithSpent.map((cat) => (
               <div
                 key={cat._id}
-                className="flex items-center px-4 py-3 border-b last:border-b-0 bg-white mx-2 mb-1 rounded-lg shadow-sm" // Thêm style cho đẹp hơn
+                className="flex items-center px-4 py-3 border-b last:border-b-0 bg-white mx-2 mb-1 rounded-lg shadow-sm"
               >
                 <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 mr-3 text-2xl">
                   {cat.icon || "📁"}

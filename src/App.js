@@ -14,6 +14,7 @@ import DashboardNavbar from "./components/DashboardNavbar";
 import SettingsPage from "./pages/SettingsPage";
 import TransactionHistoryPage from "./pages/TransactionHistoryPage";
 import StatsPage from "./pages/StatsPage";
+import GroupMembersPage from "./pages/GroupMembersPage";
 const HomePage = () => {
   return (
     <>
@@ -75,6 +76,7 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/transactions" element={<TransactionHistoryPage />} />
         <Route path="/stats" element={<StatsPage />} />
+        <Route path="/groups/:id/members" element={<GroupMembersPage />} />
       </Routes>
     </div>
   );

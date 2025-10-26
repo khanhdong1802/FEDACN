@@ -7,7 +7,7 @@ const Contact = () => {
         <h2 className="text-4xl font-bold text-center mb-12">Liên Hệ</h2>
         <p className="text-center text-lg">
           Nếu bạn có bất kỳ câu hỏi hoặc góp ý nào, vui lòng liên hệ với chúng
-          tôi qua email: support@quanlychitieu.com
+          tôi qua email: chungtoibenban.com
         </p>
       </div>
     </section>

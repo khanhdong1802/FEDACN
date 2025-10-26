@@ -1,6 +1,33 @@
 import React, { useEffect, useState } from "react";
-import CategoryCard from "../components/CategoryCard";
+//import CategoryCard from "../components/CategoryCard";
 import RecordModal from "../components/RecordModal";
+import {
+  GraduationCap,
+  Utensils,
+  Bed,
+  Home,
+  Car,
+  Calculator,
+} from "lucide-react";
+import StatsCards from "../components/StatsCards";
+
+const iconMap = {
+  "Học phí": GraduationCap,
+  "Thức ăn": Utensils,
+  "Tiền ngu": Bed,
+  "Tiền nhà": Home,
+  "Đi lại": Car,
+  "Đồ dùng": Calculator,
+};
+
+const gradientMap = {
+  "Học phí": "from-purple-500 to-purple-600",
+  "Thức ăn": "from-pink-500 to-rose-500",
+  "Tiền ngu": "from-blue-500 to-cyan-500",
+  "Tiền nhà": "from-orange-500 to-amber-500",
+  "Đi lại": "from-cyan-500 to-teal-500",
+  "Đồ dùng": "from-indigo-500 to-violet-500",
+};
 
 export default function DashboardPage() {
   const [categories, setCategories] = useState([]);
@@ -66,16 +93,33 @@ export default function DashboardPage() {
         {loading && <p className="text-center text-sm">Đang tải...</p>}
         {error && <p className="text-center text-red-500 text-sm">{error}</p>}
 
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {categories.map((cat) => (
-            <CategoryCard
-              key={cat._id}
-              icon={cat.icon || "📁"}
-              label={cat.name}
-              onClick={() => handleCategoryClick(cat)}
-            />
-          ))}
+        <div className="grid grid-cols-3 gap-3 px-2 pb-2">
+          {categories.map((cat, index) => {
+            const IconComp = iconMap[cat.name] || Calculator;
+            const gradient =
+              gradientMap[cat.name] || "from-gray-400 to-gray-500";
+            return (
+              <button
+                key={cat._id}
+                className="group glass-card rounded-3xl p-4 hover:shadow-elevation transition-all duration-300 hover:scale-105 active:scale-95 animate-slide-up"
+                style={{ animationDelay: `${index * 50}ms` }}
+                onClick={() => handleCategoryClick(cat)}
+              >
+                <div
+                  className={`bg-gradient-to-br ${gradient} w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md group-hover:shadow-glow transition-all group-hover:rotate-6`}
+                >
+                  <IconComp className="w-7 h-7 text-white" strokeWidth={2.5} />
+                </div>
+                <p className="text-xs font-semibold text-foreground text-center">
+                  {cat.name}
+                </p>
+              </button>
+            );
+          })}
         </div>
+
+        {/* Thống kê */}
+        <StatsCards />
 
         {/* Lịch sử giao dịch */}
         {transactionHistory.length === 0 ? (
@@ -104,31 +148,33 @@ export default function DashboardPage() {
                 const displayAmount = tx.amount;
 
                 if (isIncome) {
-                  iconBgClass = "bg-green-500";
+                  iconBgClass = "bg-gradient-to-r from-emerald-500 to-teal-500";
                   iconSign = "+";
                   amountColorClass = "text-green-600";
                   amountPrefix = "+ ";
                 } else if (isExpense) {
-                  iconBgClass = "bg-red-500";
+                  iconBgClass = "bg-gradient-to-r from-rose-500 to-pink-500";
                   iconSign = "-";
                   amountColorClass = "text-red-600";
                   amountPrefix = "- ";
                 } else if (isContribution) {
                   // Contribution là tiền đi ra khỏi tài khoản cá nhân
-                  iconBgClass = "bg-red-500"; // Hiển thị như một khoản chi
+                  iconBgClass = "bg-gradient-to-r from-rose-500 to-pink-500"; // Hiển thị như một khoản chi
                   iconSign = "-";
                   amountColorClass = "text-red-600";
                   amountPrefix = "- ";
                 } else {
                   if (tx.amount >= 0) {
                     // Mặc định coi số dương là thu
-                    iconBgClass = "bg-green-500";
+                    iconBgClass =
+                      "bg-gradient-to-r from-emerald-500 to-teal-500";
                     iconSign = "+";
-                    amountColorClass = "text-green-600";
+                    amountColorClass =
+                      "bg-gradient-to-r from-emerald-500 to-teal-500";
                     amountPrefix = "+ ";
                   } else {
                     // Mặc định số âm là chi (ít khả năng xảy ra nếu amount luôn dương từ API)
-                    iconBgClass = "bg-red-500";
+                    iconBgClass = "bg-gradient-to-r from-rose-500 to-pink-500";
                     iconSign = "-";
                     amountColorClass = "text-red-600";
                     amountPrefix = "- ";
@@ -142,7 +188,7 @@ export default function DashboardPage() {
                     className="flex items-start gap-3 p-4 rounded-xl shadow-sm bg-white border border-gray-100"
                   >
                     <div
-                      className={`w-10 h-10 flex items-center justify-center rounded-full text-xl font-bold text-white ${iconBgClass}`}
+                      className={`w-10 h-10 flex items-center justify-center rounded-full text-2xl font-bold leading-none text-white ${iconBgClass}`}
                     >
                       {iconSign}
                     </div>

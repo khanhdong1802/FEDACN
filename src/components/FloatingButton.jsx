@@ -1,4 +1,3 @@
-// src/components/FloatingButton.jsx
 import React, { useState } from "react";
 import { Wallet, Plus, RotateCcw, Send, NotebookPen } from "lucide-react";
 import RecordModal from "./RecordModal";
@@ -6,7 +5,6 @@ import IncomeModal from "./IncomeModal";
 import DebtModal from "./DebtModal";
 import SpendingLimitModal from "./SpendingLimitModal";
 
-// Thêm onNewRecord vào props
 const FloatingButton = ({
   groupId,
   onSuccess,
@@ -22,60 +20,59 @@ const FloatingButton = ({
   const user = JSON.parse(localStorage.getItem("user"));
   const userId = user?._id;
 
-  // Hàm chung để xử lý sau khi một hành động trong modal hoàn tất
   const handleActionComplete = (message, amountDelta, transactionType) => {
-    if (onSuccess) {
-      onSuccess();
-    }
-    // Gọi callback tương ứng để DashboardNavbar cập nhật
+    if (onSuccess) onSuccess();
     if (transactionType === "personalIncome" && onIncomeSuccess) {
       onIncomeSuccess(message, amountDelta, transactionType);
     } else if (transactionType && onNewRecord) {
-      onNewRecord(message, amountDelta, transactionType); // << Quan trọng ở đây
+      onNewRecord(message, amountDelta, transactionType);
     }
   };
 
-  // Hàm xử lý riêng cho IncomeModal để đảm bảo đúng transactionType
   const handleIncomeModalSuccess = (message, amountAdded) => {
     handleActionComplete(message, amountAdded, "personalIncome");
   };
+
   const handleRecordModalRecorded = (
     message,
     amountDelta,
     transactionTypeFromModal
   ) => {
-    // transactionTypeFromModal sẽ là "personal" hoặc "groupFundDirect" từ RecordModal
     handleActionComplete(message, amountDelta, transactionTypeFromModal);
   };
 
   const actions = [
     {
-      icon: <Wallet size={20} />,
-      label: "Hạn mức",
-      onClick: () => {
-        setOpen(false);
-        setShowSpendingLimitModal(true);
-      },
-    },
-    {
-      icon: <RotateCcw size={20} />,
-      label: "Trả nợ",
+      icon: <Wallet size={20} className="text-white" />,
+      label: "Trả Nợ",
+      bgGradient: "from-rose-500 to-pink-500",
       onClick: () => {
         setOpen(false);
         setShowDebtModal(true);
       },
     },
     {
-      icon: <Send size={20} />,
-      label: "Nạp tiền",
+      icon: <Send size={20} className="text-white" />,
+      label: "Thu nhập",
+      bgGradient: "from-emerald-500 to-teal-500",
       onClick: () => {
         setOpen(false);
         setShowIncomeModal(true);
       },
     },
     {
-      icon: <NotebookPen size={20} />,
+      icon: <RotateCcw size={20} className="text-white" />,
+      label: "Hạn mức chi tiêu",
+      bgGradient: "from-violet-500 to-purple-500",
+      onClick: () => {
+        setOpen(false);
+        setShowSpendingLimitModal(true);
+      },
+    },
+    {
+      icon: <NotebookPen size={20} className="text-white" />,
       label: "Ghi chép",
+      bgGradient: "from-purple-400 to-indigo-600",
       onClick: () => {
         setOpen(false);
         setShowRecordModal(true);
@@ -89,21 +86,19 @@ const FloatingButton = ({
         <SpendingLimitModal
           userId={userId}
           onClose={() => setShowSpendingLimitModal(false)}
-          // Thêm onSuccess (hoặc một prop callback khác) nếu cần trigger cập nhật sau khi lưu
-          // Ví dụ: onSuccess={handleSpendingLimitSave} hoặc một hàm riêng từ DashboardNavbar
         />
       )}
 
       {showRecordModal && (
         <RecordModal
           onClose={() => setShowRecordModal(false)}
-          onTransactionRecorded={handleRecordModalRecorded} // callback cập nhật lịch sử
+          onTransactionRecorded={handleRecordModalRecorded}
         />
       )}
 
       {showIncomeModal && (
         <IncomeModal
-          groupId={groupId} // Truyền groupId cho IncomeModal
+          groupId={groupId}
           onClose={() => setShowIncomeModal(false)}
           onSuccess={onSuccess}
           onIncomeSuccess={handleIncomeModalSuccess}
@@ -111,51 +106,59 @@ const FloatingButton = ({
       )}
 
       {showDebtModal && (
-        <DebtModal
-          userId={userId}
-          onClose={() => setShowDebtModal(false)}
-          // Thêm callback nếu DebtModal cần trigger cập nhật
-          // Ví dụ: onDebtPaid={() => onSuccess && onSuccess()}
-        />
+        <DebtModal userId={userId} onClose={() => setShowDebtModal(false)} />
       )}
 
-      {/* Điều kiện hiển thị nút nổi đã được sửa để ẩn khi BẤT KỲ modal nào đang mở */}
       {!showIncomeModal &&
         !showRecordModal &&
         !showDebtModal &&
         !showSpendingLimitModal && (
-          <div className="fixed bottom-6 right-6 flex flex-col items-center gap-2 z-50">
+          <div className="fixed bottom-6 right-6 z-50">
             <div
-              className={`flex flex-col items-center gap-2 transition-all duration-300 ${
-                open ? "opacity-100 scale-100" : "opacity-0 scale-0"
-              } origin-bottom`}
+              className={`absolute bottom-20 right-0 flex flex-col items-end space-y-3 transition-all duration-300 ${
+                open
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-6 pointer-events-none"
+              }`}
             >
-              {actions.map((action, index) => (
-                <button
-                  key={index}
-                  onClick={() => {
-                    setOpen(false); // Đóng menu chính khi chọn một action
-                    action.onClick(); // Gọi hàm onClick đã được định nghĩa (đã bao gồm setOpen(false))
-                  }}
-                  className="bg-white text-purple-500 rounded-xl shadow-md px-3 py-2 w-24 flex flex-col items-center text-xs font-medium hover:bg-purple-100 hover:text-purple-700 transition-all duration-200"
+              {actions.map((action, idx) => (
+                <div
+                  key={action.label}
+                  className="flex items-center gap-3 animate-slide-up"
+                  style={{ animationDelay: `${idx * 100}ms` }}
                 >
-                  {action.icon}
-                  <span className="mt-1">{action.label}</span>
-                </button>
+                  <span className="glass-card px-4 py-2 rounded-full text-sm font-medium text-foreground whitespace-nowrap shadow-elevation">
+                    {action.label}
+                  </span>
+
+                  <button
+                    onClick={() => {
+                      action.onClick();
+                    }}
+                    aria-label={action.label}
+                    className={`bg-gradient-to-br ${action.bgGradient} w-14 h-14 rounded-2xl shadow-glow flex items-center justify-center hover:scale-110 transition-all active:scale-95`}
+                  >
+                    {action.icon}
+                  </button>
+                </div>
               ))}
             </div>
 
-            <button
-              onClick={() => setOpen(!open)}
-              className="bg-purple-500 text-white text-3xl w-14 h-14 rounded-full shadow-lg hover:bg-purple-600 flex items-center justify-center transition-all"
-            >
-              <Plus
-                size={28}
-                className={`${
-                  open ? "rotate-45" : "rotate-0"
-                } transition-transform duration-300`}
-              />
-            </button>
+            {/* main FAB */}
+            <div className="relative">
+              <button
+                onClick={() => setOpen(!open)}
+                className={`bg-gradient-to-br from-purple-500 to-indigo-600 text-white w-14 h-14 rounded-full shadow-lg hover:scale-105 transition-all duration-300 flex items-center justify-center`}
+                aria-label="Thêm"
+              >
+                <Plus
+                  size={22}
+                  className={`${
+                    open ? "rotate-45" : "rotate-0"
+                  } transition-transform duration-300`}
+                />
+              </button>
+            </div>
           </div>
         )}
     </>

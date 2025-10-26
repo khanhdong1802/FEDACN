@@ -242,8 +242,9 @@ export default function TransactionHistoryPage() {
         ? new Date(tx.transaction_date).toLocaleString("vi-VN")
         : "",
       "Loại Giao dịch": tx.transaction_type,
+
       Số_tiền: tx.amount,
-      Mô_tả: tx.description || "",
+      "Danh mục": tx.description || "",
       "Trạng thái":
         tx.status === "approved"
           ? "Đã duyệt"

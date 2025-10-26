@@ -1,11 +1,38 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
-import CategoryCard from "../components/CategoryCard";
+import { useParams, useNavigate } from "react-router-dom";
+//import CategoryCard from "../components/CategoryCard";
 import FloatingButton from "../components/FloatingButton";
 import RecordModal from "../components/RecordModal";
+import {
+  GraduationCap,
+  Utensils,
+  Bed,
+  Home,
+  Car,
+  Calculator,
+} from "lucide-react";
+
+const iconMap = {
+  "Học phí": GraduationCap,
+  "Thức ăn": Utensils,
+  "Tiền ngu": Bed,
+  "Tiền nhà": Home,
+  "Đi lại": Car,
+  "Đồ dùng": Calculator,
+};
+
+const gradientMap = {
+  "Học phí": "from-purple-500 to-purple-600",
+  "Thức ăn": "from-pink-500 to-rose-500",
+  "Tiền ngu": "from-blue-500 to-cyan-500",
+  "Tiền nhà": "from-orange-500 to-amber-500",
+  "Đi lại": "from-cyan-500 to-teal-500",
+  "Đồ dùng": "from-indigo-500 to-violet-500",
+};
 
 export default function GroupDashboardPage() {
   const { id: groupId } = useParams();
+  const navigate = useNavigate();
   const [groupInfo, setGroupInfo] = useState(null);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +124,10 @@ export default function GroupDashboardPage() {
     <div className="min-h-screen bg-white relative">
       <div className="bg-white shadow -mt-4 mx-4 rounded-xl p-4 flex justify-between text-sm font-medium">
         <div>Đã chi: {groupInfo?.totalSpent?.toLocaleString() || 0} đ</div>
-        <div className="text-center text-purple-600 font-semibold">
+        <div
+          className="text-center text-purple-600 font-semibold cursor-pointer hover:underline"
+          onClick={() => navigate(`/groups/${groupId}/members`)}
+        >
           {groupInfo?.name || "Tên nhóm"}
         </div>
         <div>
@@ -111,15 +141,29 @@ export default function GroupDashboardPage() {
         {loading && <p className="text-center text-sm">Đang tải...</p>}
         {error && <p className="text-center text-red-500 text-sm">{error}</p>}
 
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {categories.map((cat) => (
-            <CategoryCard
-              key={cat._id}
-              icon={cat.icon || "📁"}
-              label={cat.name}
-              onClick={() => handleCategoryClick(cat)}
-            />
-          ))}
+        <div className="grid grid-cols-3 gap-3 pb-2">
+          {categories.map((cat, index) => {
+            const IconComp = iconMap[cat.name] || Calculator;
+            const gradient =
+              gradientMap[cat.name] || "from-gray-400 to-gray-500";
+            return (
+              <button
+                key={cat._id}
+                className="group glass-card rounded-3xl p-4 hover:shadow-elevation transition-all duration-300 hover:scale-105 active:scale-95 animate-slide-up"
+                style={{ animationDelay: `${index * 50}ms` }}
+                onClick={() => handleCategoryClick(cat)}
+              >
+                <div
+                  className={`bg-gradient-to-br ${gradient} w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md group-hover:shadow-glow transition-all group-hover:rotate-6`}
+                >
+                  <IconComp className="w-7 h-7 text-white" strokeWidth={2.5} />
+                </div>
+                <p className="text-xs font-semibold text-foreground text-center">
+                  {cat.name}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
 

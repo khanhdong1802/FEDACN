@@ -28,7 +28,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center px-4 py-10 pt-16">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-800 text-white flex flex-col items-center px-4 py-10 pt-16">
       <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
         Chào mừng quay trở lại!
       </h2>
