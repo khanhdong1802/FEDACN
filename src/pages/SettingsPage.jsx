@@ -10,7 +10,7 @@ const SettingsPage = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Lấy thông tin user từ localStorage khi vào trang
+  // Load user info from localStorage when the page loads
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
@@ -32,7 +32,7 @@ const SettingsPage = () => {
     e.preventDefault();
     setMessage("");
 
-    // Kiểm tra xác nhận mật khẩu nếu có nhập mật khẩu mới
+    // Check password confirmation if new password is entered
     if (form.password && form.password !== form.confirmPassword) {
       setMessage("Mật khẩu mới và xác nhận mật khẩu không khớp!");
       return;
@@ -44,11 +44,11 @@ const SettingsPage = () => {
       if (!storedUser) throw new Error("Không tìm thấy thông tin người dùng");
       const user = JSON.parse(storedUser);
 
-      // Không gửi confirmPassword lên backend
+      // Do not send confirmPassword to backend
       const { confirmPassword, ...submitForm } = form;
 
       const res = await fetch(
-        `https://bedacn.onrender.com/api/admin/users/update/${user._id}`,
+        `http://localhost:3000/api/admin/users/update/${user._id}`,
         {
           method: "PUT",
           headers: {
@@ -60,13 +60,13 @@ const SettingsPage = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Cập nhật thất bại");
 
-      // Cập nhật lại localStorage nếu thành công
+      // Update localStorage on success
       localStorage.setItem(
         "user",
         JSON.stringify({ ...user, name: form.name, email: form.email })
       );
       setMessage("Cập nhật thành công!");
-      setForm({ ...form, password: "", confirmPassword: "" }); // Xóa mật khẩu sau khi lưu
+      setForm({ ...form, password: "", confirmPassword: "" }); // Clear password fields after saving
     } catch (err) {
       setMessage(err.message || "Có lỗi xảy ra");
     } finally {
@@ -75,68 +75,90 @@ const SettingsPage = () => {
   };
 
   return (
-    <div className="p-6 max-w-md mx-auto">
-      <h1 className="text-xl font-bold mb-4">Cập nhật tài khoản</h1>
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <div>
-          <label className="block mb-1 font-medium">Tên</label>
-          <input
-            type="text"
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            className="w-full px-3 py-2 rounded border"
-            required
-          />
-        </div>
-        <div>
-          <label className="block mb-1 font-medium">Email</label>
-          <input
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            className="w-full px-3 py-2 rounded border"
-            required
-          />
-        </div>
-        <div>
-          <label className="block mb-1 font-medium">Mật khẩu mới</label>
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            className="w-full px-3 py-2 rounded border"
-            placeholder="Để trống nếu không đổi"
-          />
-        </div>
-        <div>
-          <label className="block mb-1 font-medium">
-            Xác nhận mật khẩu mới
-          </label>
-          <input
-            type="password"
-            name="confirmPassword"
-            value={form.confirmPassword}
-            onChange={handleChange}
-            className="w-full px-3 py-2 rounded border"
-            placeholder="Nhập lại mật khẩu mới"
-          />
-        </div>
-        <button
-          type="submit"
-          className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-          disabled={loading}
-        >
-          {loading ? "Đang lưu..." : "Lưu thay đổi"}
-        </button>
-        {message && (
-          <div className="mt-2 text-center text-sm text-green-600">
-            {message}
+    <div className="bg-gray-100 min-h-screen flex flex-col items-center py-10 px-4">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
+        <h1 className="text-2xl font-semibold text-center text-gray-800 mb-6">
+          Cập nhật tài khoản
+        </h1>
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tên
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              required
+            />
           </div>
-        )}
-      </form>
+
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+          </div>
+
+          {/* New Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Mật khẩu mới
+            </label>
+            <input
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Để trống nếu không đổi"
+            />
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Xác nhận mật khẩu mới
+            </label>
+            <input
+              type="password"
+              name="confirmPassword"
+              value={form.confirmPassword}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Nhập lại mật khẩu mới"
+            />
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            className="w-full py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-indigo-400"
+            disabled={loading}
+          >
+            {loading ? "Đang lưu..." : "Lưu thay đổi"}
+          </button>
+
+          {/* Success or Error Message */}
+          {message && (
+            <div className="mt-3 text-center text-sm text-red-600">
+              {message}
+            </div>
+          )}
+        </form>
+      </div>
     </div>
   );
 };

@@ -2,13 +2,57 @@
 import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
+const cn = (...classes) => classes.filter(Boolean).join(" ");
+
+// mini UI
+const Label = ({ children, className = "", ...props }) => (
+  <label
+    className={cn("block text-sm font-medium text-gray-800 mb-1", className)}
+    {...props}
+  >
+    {children}
+  </label>
+);
+
+const Input = ({ className = "", ...props }) => (
+  <input
+    {...props}
+    className={cn(
+      "w-full px-3 py-2 rounded-2xl border border-white/70 bg-white/90 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500",
+      className
+    )}
+  />
+);
+
+const Textarea = ({ className = "", ...props }) => (
+  <textarea
+    {...props}
+    className={cn(
+      "w-full px-3 py-2 rounded-2xl border border-white/70 bg-white/90 text-sm text-gray-900 resize-none shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500",
+      className
+    )}
+  />
+);
+
+const Button = ({ children, className = "", ...props }) => (
+  <button
+    {...props}
+    className={cn(
+      "inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold transition-all focus:outline-none",
+      className
+    )}
+  >
+    {children}
+  </button>
+);
+
 // Đảm bảo IncomeModal nhận prop onIncomeSuccess từ FloatingButton
 const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
   const [mode, setMode] = useState("personal");
   const [groups, setGroups] = useState([]);
   const [groupFunds, setGroupFunds] = useState([]);
   const [groupFundName, setGroupFundName] = useState("");
-  const [selectedGroupId, setSelectedGroupId] = useState(groupId || ""); // Ưu tiên groupId từ props nếu có
+  const [selectedGroupId, setSelectedGroupId] = useState(groupId || "");
   const [amount, setAmount] = useState("");
   const [source, setSource] = useState("");
   const [note, setNote] = useState("");
@@ -22,7 +66,7 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
 
   useEffect(() => {
     if (user?._id) {
-      fetch(`http://localhost:3000/api/auth/groups?userId=${user._id}`)
+      fetch(`http://localhost:3000/api/group/groups?userId=${user._id}`)
         .then((res) => res.json())
         .then((data) => {
           setGroups(data.groups || []);
@@ -38,6 +82,7 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
         .catch((err) => console.error("Lỗi khi lấy danh sách nhóm:", err));
     }
   }, [user?._id, groupId, mode, selectedGroupId]);
+
   useEffect(() => {
     if (groupId && !selectedGroupId) {
       const groupExists = groups.some((g) => g._id === groupId);
@@ -47,7 +92,6 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
           mode !== "group" &&
           !groups.find((g) => g._id === selectedGroupId)
         ) {
-          // Nếu đang personal mà có groupId, chuyển sang group
           setMode("group");
         }
       }
@@ -56,9 +100,8 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
 
   useEffect(() => {
     if (selectedGroupId && mode === "group") {
-      // Chỉ fetch khi ở mode group và đã chọn group
       fetch(
-        `http://localhost:3000/api/auth/group-funds?groupId=${selectedGroupId}`
+        `http://localhost:3000/api/group/group-funds?groupId=${selectedGroupId}`
       )
         .then((res) => res.json())
         .then((data) => {
@@ -78,10 +121,9 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
   }, [selectedGroupId, mode]);
 
   const handleAddFund = async () => {
-    // ... (logic handleAddFund giữ nguyên)
     if (!newFundName.trim() || !selectedGroupId) return;
     try {
-      const res = await fetch("http://localhost:3000/api/auth/group-funds", {
+      const res = await fetch("http://localhost:3000/api/group/group-funds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -89,13 +131,12 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
           name: newFundName.trim(),
         }),
       });
-      const newFundData = await res.json(); // Đổi tên biến để tránh trùng với data của handleSave
+      const newFundData = await res.json();
       console.log("Kết quả thêm quỹ:", newFundData);
 
       if (res.ok && newFundData && newFundData._id) {
-        // API trả về object quỹ mới có _id
         setGroupFunds((prev) => [...prev, newFundData]);
-        setGroupFundName(newFundData.name); // Chọn luôn quỹ vừa tạo
+        setGroupFundName(newFundData.name);
         setNewFundName("");
       } else {
         alert(
@@ -134,29 +175,26 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
       let apiUrl = "";
       let successMessage = "";
       let transactionType = "";
-      let amountDeltaForNavbar = numericAmount; // Số tiền ảnh hưởng đến số dư cá nhân trên Navbar
+      let amountDeltaForNavbar = numericAmount;
 
       if (mode === "personal") {
         payload.user_id = user._id;
         apiUrl = "http://localhost:3000/api/auth/Income";
         successMessage = `Nạp tiền cá nhân thành công: ${numericAmount.toLocaleString()} đ từ ${source}.`;
-        transactionType = "personalIncome"; // Thu nhập cá nhân
+        transactionType = "personalIncome";
       } else {
-        // mode === "group" (Nạp tiền vào quỹ nhóm)
         payload.group_id = selectedGroupId;
         payload.fund_name = groupFundName.trim();
-        payload.member_id = user._id; // Người dùng hiện tại đang nạp tiền vào quỹ nhóm
-        payload.payment_method = "cash"; // Hoặc phương thức khác
-        apiUrl = "http://localhost:3000/api/auth/group-contributions";
+        payload.member_id = user._id;
+        payload.payment_method = "cash";
+        apiUrl = "http://localhost:3000/api/group/group-contributions";
 
         const selectedGroup = groups.find((g) => g._id === selectedGroupId);
         successMessage = `Nạp ${numericAmount.toLocaleString()} đ vào quỹ "${groupFundName}" của nhóm "${
           selectedGroup?.name || ""
         }" thành công.`;
-        // Vì backend API /group-contributions của bạn tạo Income âm (trừ tiền cá nhân)
-        // nên amountDelta gửi lên Navbar phải là số âm.
         amountDeltaForNavbar = -numericAmount;
-        transactionType = "personal"; // Coi như một chi tiêu cá nhân để nạp vào nhóm
+        transactionType = "personal";
       }
 
       const response = await fetch(apiUrl, {
@@ -168,7 +206,7 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
       const result = await response.json();
 
       if (response.ok) {
-        alert(successMessage); // Thông báo cho người dùng
+        alert(successMessage);
         if (onIncomeSuccess) {
           onIncomeSuccess(
             successMessage,
@@ -176,13 +214,8 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
             transactionType
           );
         }
-
-        // Gọi onSuccess (nếu có, thường từ GroupDashboardPage để fetch lại data nhóm)
-        if (onSuccess) {
-          onSuccess();
-        }
-
-        onClose(); // Đóng modal
+        if (onSuccess) onSuccess();
+        onClose();
       } else {
         setErrorMessage(
           result.message || "Đã xảy ra lỗi khi thực hiện giao dịch"
@@ -197,69 +230,95 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
   };
 
   return (
-    // ... JSX của IncomeModal giữ nguyên ...
-    <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
-      <div className="bg-white w-full max-w-md rounded-t-2xl p-4 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center border-b pb-2 mb-2">
-          <button onClick={onClose}>
-            <X size={24} />
-          </button>
-          <h1 className="text-lg font-medium">Ghi thu nhập</h1>
-          <button
-            className="text-purple-600 font-medium"
-            onClick={handleSave}
-            disabled={loading}
-          >
-            {loading ? "Đang lưu..." : "Lưu"}
-          </button>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+      {/* CARD: ít trong suốt hơn + cuộn nội dung */}
+      <div className="relative w-full max-w-md mx-4 rounded-3xl bg-white/95 border border-white/80 shadow-xl flex flex-col max-h-[90vh]">
+        {/* Header + Tabs (không cuộn) */}
+        <div className="px-6 pt-5 pb-4 border-b border-white/70 flex flex-col gap-4 shrink-0">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full hover:bg-black/5 flex items-center justify-center transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h1 className="text-lg font-semibold text-gray-900">
+              Ghi thu nhập
+            </h1>
+            <Button
+              onClick={handleSave}
+              disabled={loading}
+              className={cn(
+                "text-white bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600",
+                loading && "opacity-60 cursor-not-allowed"
+              )}
+            >
+              {loading ? "Đang lưu..." : "Lưu"}
+            </Button>
+          </div>
+
+          {/* Tabs Cá nhân / Nhóm */}
+          <div className="glass-card bg-white/40 border border-white/70 rounded-full p-1 flex">
+            <button
+              type="button"
+              onClick={() => setMode("personal")}
+              className={cn(
+                "flex-1 px-4 py-1.5 text-sm font-medium rounded-full transition-all",
+                mode === "personal"
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-gray-500"
+              )}
+            >
+              Cá nhân
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("group")}
+              className={cn(
+                "flex-1 px-4 py-1.5 text-sm font-medium rounded-full transition-all",
+                mode === "group"
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-gray-500"
+              )}
+            >
+              Nhóm
+            </button>
+          </div>
+
+          {errorMessage && (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-2xl px-3 py-2">
+              {errorMessage}
+            </div>
+          )}
         </div>
 
-        {/* Chọn chế độ */}
-        <div className="flex justify-around py-2 border-b">
-          <button
-            className={`px-4 py-1 rounded-full ${
-              mode === "personal" ? "bg-purple-200" : "bg-gray-100"
-            }`}
-            onClick={() => setMode("personal")}
-          >
-            Cá nhân
-          </button>
-          <button
-            className={`px-4 py-1 rounded-full ${
-              mode === "group" ? "bg-purple-200" : "bg-gray-100"
-            }`}
-            onClick={() => setMode("group")}
-          >
-            Nhóm
-          </button>
-        </div>
-
-        {errorMessage && (
-          <div className="text-red-500 text-sm mb-4 mt-2">{errorMessage}</div>
-        )}
-
-        {/* Form */}
-        <div className="flex flex-col gap-4 mt-2">
+        {/* CONTENT: phần này cuộn được */}
+        <div className="px-6 pb-5 pt-4 flex-1 overflow-y-auto space-y-4">
           {/* Số tiền */}
-          <div className="flex justify-between items-center border-b py-2">
-            <span className="text-gray-500">Số tiền</span>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0"
-              className="text-right w-1/2 text-gray-700 outline-none"
-            />
+          <div>
+            <Label>Số tiền</Label>
+            <div className="relative">
+              <Input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0"
+                className="pr-10 text-right"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                đ
+              </span>
+            </div>
           </div>
 
           {/* Nguồn thu */}
-          <div className="flex justify-between items-center border-b py-2">
-            <span className="text-gray-500">Nguồn thu</span>
+          <div>
+            <Label>Nguồn thu</Label>
             <select
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              className="text-right w-1/2 text-gray-700 outline-none bg-transparent"
+              className="w-full px-3 py-2 rounded-2xl border border-white/70 bg-white/90 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="" disabled>
                 Chọn nguồn thu
@@ -273,29 +332,28 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
           </div>
 
           {/* Ngày nhận */}
-          <div className="flex justify-between items-center border-b py-2">
-            <span className="text-gray-500">Ngày nhận</span>
-            <input
+          <div>
+            <Label>Ngày nhận</Label>
+            <Input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="text-gray-700 outline-none"
+              className="text-sm"
             />
           </div>
 
-          {/* Nhóm & Quỹ */}
+          {/* Nhóm & Quỹ (mode Nhóm) */}
           {mode === "group" && (
             <>
-              {/* Nhóm */}
-              <div className="flex justify-between items-center border-b py-2">
-                <span className="text-gray-500">Chọn nhóm</span>
+              <div>
+                <Label>Chọn nhóm</Label>
                 <select
                   value={selectedGroupId}
                   onChange={(e) => {
                     setSelectedGroupId(e.target.value);
                     setGroupFundName("");
                   }}
-                  className="text-right w-1/2 text-gray-700 outline-none bg-transparent"
+                  className="w-full px-3 py-2 rounded-2xl border border-white/70 bg-white/90 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="" disabled>
                     Chọn nhóm
@@ -308,13 +366,12 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
                 </select>
               </div>
 
-              {/* Chọn quỹ nhóm */}
-              <div className="flex justify-between items-center border-b py-2">
-                <span className="text-gray-500">Chọn quỹ nhóm</span>
+              <div>
+                <Label>Chọn quỹ nhóm</Label>
                 <select
                   value={groupFundName}
                   onChange={(e) => setGroupFundName(e.target.value)}
-                  className="text-right w-1/2 text-gray-700 outline-none bg-transparent"
+                  className="w-full px-3 py-2 rounded-2xl border border-white/70 bg-white/90 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="" disabled>
                     Chọn quỹ nhóm
@@ -330,35 +387,38 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
                 </select>
               </div>
 
-              {/* Thêm quỹ mới */}
-              <div className="flex gap-2 items-center mt-1">
-                <input
+              <div className="flex gap-2 items-center">
+                <Input
                   type="text"
                   value={newFundName}
                   onChange={(e) => setNewFundName(e.target.value)}
                   placeholder="Tên quỹ mới"
-                  className="flex-1 border rounded px-2 py-1 text-sm"
+                  className="flex-1"
                 />
-                <button
+                <Button
                   type="button"
-                  className="bg-purple-500 text-white px-3 py-1 rounded text-sm"
                   onClick={handleAddFund}
                   disabled={!newFundName.trim() || !selectedGroupId}
+                  className={cn(
+                    "bg-gradient-to-r from-purple-500 to-violet-500 text-white hover:from-purple-600 hover:to-violet-600 px-4",
+                    (!newFundName.trim() || !selectedGroupId) &&
+                      "opacity-60 cursor-not-allowed"
+                  )}
                 >
                   Thêm quỹ
-                </button>
+                </Button>
               </div>
             </>
           )}
 
           {/* Ghi chú */}
-          <div className="border-b py-2">
-            <textarea
-              rows={2}
+          <div className="pb-1">
+            <Label>Ghi chú thêm (nếu có)</Label>
+            <Textarea
+              rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full text-sm text-gray-700 outline-none"
-              placeholder="Ghi chú thêm (nếu có)"
+              placeholder="Thêm ghi chú..."
             />
           </div>
         </div>

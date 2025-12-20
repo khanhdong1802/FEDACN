@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+//import { useNavigate } from "react-router-dom";
 export default function CreateRoomModal({ isOpen, onClose }) {
   const [roomName, setRoomName] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [emailSuggestions, setEmailSuggestions] = useState([]);
   const [selectedMemberIds, setSelectedMemberIds] = useState([]);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
   // Gợi ý email
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -17,7 +17,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
 
       try {
         const res = await fetch(
-          `http://localhost:3000/api/auth/search?q=${memberEmail}`
+          `http://localhost:3000/api/group/search?q=${memberEmail}`
         );
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -51,18 +51,21 @@ export default function CreateRoomModal({ isOpen, onClose }) {
 
       const user = JSON.parse(storedUser);
 
-      const response = await fetch("http://localhost:3000/api/auth/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: roomName,
-          description: "",
-          created_by: user._id,
-          memberEmail: memberEmail || undefined, // chỉ gửi nếu có nhập email
-        }),
-      });
+      const response = await fetch(
+        "http://localhost:3000/api/group/invitations",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: roomName,
+            description: "",
+            created_by: user._id,
+            memberEmail: memberEmail || undefined,
+          }),
+        }
+      );
 
       const data = await response.json();
 
@@ -70,10 +73,12 @@ export default function CreateRoomModal({ isOpen, onClose }) {
         console.error("❌ Tạo nhóm thất bại:", data);
         alert("❌ Tạo nhóm thất bại: " + data.message);
       } else {
-        alert("✅ Nhóm đã được tạo thành công!");
+        alert(
+          "✅ Đã gửi lời mời. Nhóm sẽ được kích hoạt khi thành viên chấp nhận."
+        );
         onClose();
-        // Chuyển hướng sang DashboardPage của nhóm mới
-        navigate(`/dashboard/${data.group._id}`);
+        // Có thể: navigate("/dashboard") hoặc về trang nhóm
+        // KHÔNG nên navigate vào dashboard group khi còn pending
       }
     } catch (error) {
       console.error("❌ Lỗi:", error);

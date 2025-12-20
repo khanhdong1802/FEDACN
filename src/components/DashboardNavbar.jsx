@@ -13,6 +13,7 @@ import {
   X,
   Settings,
   TrendingUp,
+  Shield,
 } from "lucide-react";
 import avatar from "../assets/avatar.jpg";
 import CreateRoomModal from "./CreateRoomModal";
@@ -20,7 +21,7 @@ import { useNavigate } from "react-router-dom";
 
 const DashboardNavbar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState(null);
+  //const [user, setUser] = useState(null);
   const [totalIncome, setTotalIncome] = useState(0); // Đây là số dư cá nhân
   const [totalSpent, setTotalSpent] = useState(0); // STATE MỚI: Tổng chi tiêu cá nhân
   const [spendingLimit, setSpendingLimit] = useState(0);
@@ -30,9 +31,15 @@ const DashboardNavbar = () => {
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const navigate = useNavigate();
-  const [showNotification, setShowNotification] = useState(false);
-  const bellRef = useRef();
   const [notifications, setNotifications] = useState([]);
+  const [showNotification, setShowNotification] = useState(false);
+  const bellRef = useRef(null);
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  //----------------------------------
+  // const [notifications, setNotifications] = useState([
+  //   { id: 1, message: "Chào mừng bạn đến với app 🎉" },
+  // ]);
 
   // Hàm fetch dữ liệu ban đầu cho Navbar
   const fetchNavbarData = useCallback(async (userId) => {
@@ -78,7 +85,9 @@ const DashboardNavbar = () => {
         });
 
       // Lấy hạn mức chi tiêu
-      fetch(`http://localhost:3000/api/auth/spending-limits/${userId}/current`)
+      fetch(
+        `http://localhost:3000/api/spending-limit/spending-limits/${userId}/current`
+      )
         .then((res) => res.json())
         .then((data) => {
           setSpendingLimit(data?.amount || 0);
@@ -87,7 +96,7 @@ const DashboardNavbar = () => {
         .catch((err) => console.error("Lỗi khi lấy hạn mức:", err));
 
       // Lấy danh sách phòng
-      fetch(`http://localhost:3000/api/auth/groups?userId=${userId}`)
+      fetch(`http://localhost:3000/api/group/groups?userId=${userId}`)
         .then((res) => res.json())
         .then((data) => {
           setRooms(data.groups || []);
@@ -100,7 +109,7 @@ const DashboardNavbar = () => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
+      //setUser(parsedUser);
       fetchNavbarData(parsedUser._id); // Gọi fetchNavbarData với userId
     }
   }, [fetchNavbarData]); // Thêm fetchNavbarData vào dependency array
@@ -143,6 +152,83 @@ const DashboardNavbar = () => {
       fetchNavbarData(user._id); // Chỉ fetch lại số dư/tổng chi từ backend
     }
   };
+  //----------------------------------
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (bellRef.current && !bellRef.current.contains(e.target)) {
+        setShowNotification(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user?._id) return;
+      try {
+        const res = await fetch(
+          `http://localhost:3000/api/group/notifications?userId=${user._id}`
+        );
+        const data = await res.json();
+        setNotifications(data || []);
+      } catch (err) {
+        console.error("Lỗi load notifications:", err);
+      }
+    };
+
+    fetchNotifications();
+  }, [user?._id]);
+
+  const handleAcceptInvite = async (noti) => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user"));
+      const res = await fetch(
+        `http://localhost:3000/api/group/invitations/${noti._id}/accept`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user._id }),
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert("Không chấp nhận được lời mời: " + err.message);
+        return;
+      }
+
+      const data = await res.json();
+
+      // Xoá noti khỏi state (biến mất trên UI)
+      setNotifications((prev) => prev.filter((n) => n._id !== noti._id));
+
+      // Điều hướng vào group
+      navigate(`/dashboard/${data.groupId}`);
+    } catch (e) {
+      console.error("Lỗi accept invite FE:", e);
+      alert("Có lỗi xảy ra khi chấp nhận lời mời");
+    }
+  };
+
+  // Từ chối lời mời
+  const handleRejectInvite = async (noti) => {
+    try {
+      await fetch(
+        `http://localhost:3000/api/group/notifications/${noti._id}/reject`,
+        {
+          method: "POST",
+        }
+      );
+
+      // Xoá noti khỏi list FE
+      setNotifications((prev) => prev.filter((item) => item._id !== noti._id));
+    } catch (err) {
+      console.error("Lỗi reject invite:", err);
+      alert("Không thể từ chối lời mời");
+    }
+  };
 
   return (
     <>
@@ -175,12 +261,16 @@ const DashboardNavbar = () => {
               <Menu className="h-6 w-6" />
             </button>
             <div className="relative notification-bell-icon" ref={bellRef}>
-              <button className="text-white hover:bg-white/20 transition-all rounded-full p-2 relative">
+              <button
+                className="text-white hover:bg-white/20 transition-all rounded-full p-2 relative"
+                onClick={() => setShowNotification((prev) => !prev)}
+              >
                 <Bell className="h-6 w-6" />
-                {notifications.length > 0 && (
+                {notifications.some((n) => n.status === "pending") && (
                   <span className="absolute top-2 right-2 w-2 h-2 bg-pink-400 rounded-full animate-pulse" />
                 )}
               </button>
+
               {showNotification && (
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg z-[60] p-4 max-h-96 overflow-y-auto">
                   <div className="flex flex-col gap-2">
@@ -197,12 +287,27 @@ const DashboardNavbar = () => {
                     ) : (
                       notifications.map((noti) => (
                         <div
-                          key={noti.id}
-                          className="p-2 border-b last:border-b-0"
+                          key={noti._id}
+                          className="bg-gray-50 rounded-xl p-3 flex flex-col gap-2"
                         >
-                          <span className="text-gray-800 text-sm">
-                            {noti.message}
-                          </span>
+                          <p className="text-sm text-gray-800">
+                            Bạn được mời vào nhóm "{noti.groupName}"
+                          </p>
+
+                          <div className="flex justify-end gap-2">
+                            <button
+                              className="px-3 py-1 rounded-lg text-xs bg-gray-200 text-gray-600 cursor-pointer"
+                              onClick={() => handleRejectInvite(noti)}
+                            >
+                              Từ chối
+                            </button>
+                            <button
+                              className="px-3 py-1 rounded-lg text-xs bg-indigo-500 text-white cursor-pointer"
+                              onClick={() => handleAcceptInvite(noti)}
+                            >
+                              Chấp nhận
+                            </button>
+                          </div>
                         </div>
                       ))
                     )}
@@ -342,6 +447,19 @@ const DashboardNavbar = () => {
           >
             <Settings size={16} /> Cài đặt tài khoản
           </li>
+          {/* Admin Button */}
+          {/* Admin Button */}
+          {localStorage.getItem("isAdmin") === "true" && (
+            <li
+              onClick={() => {
+                navigate("/admin"); // Điều hướng tới trang Admin
+                setSidebarOpen(false); // Đóng sidebar nếu có
+              }}
+              className="flex items-center gap-3 p-2 rounded hover:bg-white/20 cursor-pointer transition-colors duration-200"
+            >
+              <Shield size={16} /> Admin Panel
+            </li>
+          )}
           {/* Đẩy nút Đăng xuất xuống cuối */}
           <li
             onClick={handleLogout}

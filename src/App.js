@@ -15,6 +15,7 @@ import SettingsPage from "./pages/SettingsPage";
 import TransactionHistoryPage from "./pages/TransactionHistoryPage";
 import StatsPage from "./pages/StatsPage";
 import GroupMembersPage from "./pages/GroupMembersPage";
+import Admin from "./pages/Admin";
 const HomePage = () => {
   return (
     <>
@@ -77,6 +78,8 @@ function App() {
         <Route path="/transactions" element={<TransactionHistoryPage />} />
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/groups/:id/members" element={<GroupMembersPage />} />
+        {/* Trang Admin */}
+        <Route path="/admin" element={<Admin />} /> {/* Thêm route cho Admin */}
       </Routes>
     </div>
   );

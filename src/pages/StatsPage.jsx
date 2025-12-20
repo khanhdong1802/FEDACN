@@ -7,6 +7,9 @@ import { Pie } from "react-chartjs-2";
 import { Chart, ArcElement, Tooltip, Legend } from "chart.js";
 Chart.register(ArcElement, Tooltip, Legend);
 
+// helper nhỏ
+const cn = (...classes) => classes.filter(Boolean).join(" ");
+
 export default function StatsPage() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,18 +37,16 @@ export default function StatsPage() {
       .then((data) => {
         setTransactions(data);
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, [userId]);
 
   // Fetch danh sách danh mục chi tiêu
   useEffect(() => {
-    setLoading(true);
     fetch(`http://localhost:3000/api/admin/categories`)
       .then((res) => res.json())
-      .then((data) => {
-        setCategories(data);
-        setLoading(false);
-      });
+      .then((data) => setCategories(data))
+      .catch(() => setCategories([]));
   }, []);
 
   // Lấy dữ liệu pie chart từ API cho tháng này và tháng trước
@@ -62,7 +63,8 @@ export default function StatsPage() {
       )}`
     )
       .then((res) => res.json())
-      .then((data) => setPieSummaryThisMonth(data));
+      .then((data) => setPieSummaryThisMonth(data))
+      .catch(() => setPieSummaryThisMonth(null));
 
     // Tháng trước
     fetch(
@@ -71,10 +73,11 @@ export default function StatsPage() {
       )}`
     )
       .then((res) => res.json())
-      .then((data) => setPieSummaryLastMonth(data));
+      .then((data) => setPieSummaryLastMonth(data))
+      .catch(() => setPieSummaryLastMonth(null));
   }, [userId]);
 
-  // Tính toán dữ liệu biểu đồ biến động số dư cá nhân hôm nay (giữ nguyên)
+  // Biểu đồ biến động số dư hôm nay (Cá nhân / Nhóm)
   useEffect(() => {
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
@@ -108,7 +111,6 @@ export default function StatsPage() {
           }
           if (amountChange !== 0) {
             currentBalance += amountChange;
-            // Hiển thị giờ thực hiện giao dịch
             const d = new Date(tx.transaction_date);
             labels.push(
               d.toLocaleTimeString("vi-VN", {
@@ -120,7 +122,7 @@ export default function StatsPage() {
           }
         });
         setBalanceChartData({
-          labels: labels,
+          labels,
           datasets: [
             {
               label: "Biến động số dư cá nhân hôm nay",
@@ -165,7 +167,7 @@ export default function StatsPage() {
 
         let groupBalance = 0;
         const labels = ["Đầu ngày"];
-        const dataPoints = [];
+        const dataPoints = [0];
 
         sortedTx.forEach((tx) => {
           let amountChange = 0;
@@ -188,7 +190,7 @@ export default function StatsPage() {
         });
 
         setBalanceChartData({
-          labels: labels,
+          labels,
           datasets: [
             {
               label: "Biến động quỹ nhóm hôm nay",
@@ -221,29 +223,24 @@ export default function StatsPage() {
     }
   }, [transactions, mainTab]);
 
-  // Tính tổng chi tiêu theo danh mục hôm nay (giữ nguyên)
-  const now = new Date();
+  // Tổng chi hôm nay theo danh mục
   const categoriesWithSpent = useMemo(() => {
     if (!categories.length || !transactions.length) {
       return [];
     }
 
-    // Xác định ngày hôm nay
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    // Xác định ngày hôm nay bên trong useMemo để không phải đưa 'now' vào deps
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
 
     return categories.map((cat) => {
       const spentAmount = transactions
         .filter((tx) => {
-          // 1. LỌC CHÍNH XÁC THEO NGÀY HÔM NAY
           const txDateStr = new Date(tx.transaction_date)
             .toISOString()
             .slice(0, 10);
-          if (txDateStr !== todayStr) {
-            return false; // Quan trọng: Bỏ qua giao dịch không phải của ngày hôm nay
-          }
+          if (txDateStr !== todayStr) return false;
 
-          // 2. Lọc theo tab "Cá nhân" hoặc "Nhóm" (giữ nguyên logic này)
           if (mainTab === "Cá nhân" && tx.group_id) return false;
           if (
             mainTab === "Nhóm" &&
@@ -254,14 +251,12 @@ export default function StatsPage() {
               return false;
           }
 
-          // 3. Lọc theo category_id (giữ nguyên logic này)
           const txCategoryId =
             typeof tx.category_id === "object" && tx.category_id !== null
               ? tx.category_id._id
               : tx.category_id;
           if (txCategoryId !== cat._id) return false;
 
-          // 4. Xác định các loại giao dịch được coi là "chi tiêu" (giữ nguyên logic này)
           let isSpendingTransaction = false;
           const type = tx.transaction_type?.toLowerCase();
 
@@ -274,7 +269,6 @@ export default function StatsPage() {
               isSpendingTransaction = true;
             }
           } else if (mainTab === "Nhóm") {
-            // Chỉ tính 'groupexpense' là chi tiêu khi ở tab Nhóm
             if (type === "groupexpense") {
               isSpendingTransaction = true;
             }
@@ -286,19 +280,17 @@ export default function StatsPage() {
       return { ...cat, spent: spentAmount };
     });
   }, [transactions, categories, mainTab]);
-
-  // Màu sắc cho các danh mục (tùy chỉnh theo số lượng danh mục)
+  const now = new Date();
   const pieColors = [
-    "#60a5fa", // Tiền nhà
-    "#1d4ed8", // Tiền thức ăn
-    "#f59e42", // Học phí
-    "#ef4444", // Tiền đi lại
-    "#a78bfa", // Tiền đồ dùng
-    "#f472b6", // Tiền ngu
-    "#a16207", // Phí khác
+    "#60a5fa",
+    "#1d4ed8",
+    "#f59e42",
+    "#ef4444",
+    "#a78bfa",
+    "#f472b6",
+    "#a16207",
   ];
 
-  // Dữ liệu cho Pie Chart tháng này
   const pieDataThisMonth = pieSummaryThisMonth
     ? {
         labels: pieSummaryThisMonth.summary.map((item) => item.category_name),
@@ -311,7 +303,6 @@ export default function StatsPage() {
       }
     : null;
 
-  // Dữ liệu cho Pie Chart tháng trước
   const pieDataLastMonth = pieSummaryLastMonth
     ? {
         labels: pieSummaryLastMonth.summary.map((item) => item.category_name),
@@ -324,202 +315,268 @@ export default function StatsPage() {
       }
     : null;
 
-  // Lấy ngày/tháng năm cho phần tiêu đề
   const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const totalToday = categoriesWithSpent.reduce(
+    (sum, cat) => sum + cat.spent,
+    0
+  );
+
+  const isPersonal = mainTab === "Cá nhân";
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
-      <div className="sticky top-0 bg-white shadow z-10 flex items-center justify-between px-4 py-3 border-b">
-        <button onClick={() => navigate(-1)}>
-          <ChevronLeft size={24} />
-        </button>
-        <div className="font-semibold text-lg">Thống kê</div>
-        <div />
-      </div>
-
-      {/* Tabs chọn loại thống kê */}
-      <div className="flex gap-2 px-4 py-3 bg-white border-b">
-        <button
-          className={`px-3 py-1 rounded-full font-medium ${
-            mainTab === "Cá nhân"
-              ? "bg-purple-200 text-purple-700"
-              : "bg-gray-100 text-gray-600"
-          }`}
-          onClick={() => setMainTab("Cá nhân")}
-        >
-          Cá nhân
-        </button>
-        <button
-          className={`px-3 py-1 rounded-full font-medium ${
-            mainTab === "Nhóm"
-              ? "bg-blue-200 text-blue-700"
-              : "bg-gray-100 text-gray-600"
-          }`}
-          onClick={() => setMainTab("Nhóm")}
-        >
-          Nhóm
-        </button>
-      </div>
-
-      {/* Biểu đồ biến động số dư cá nhân hôm nay */}
-      <div className="p-4">
-        {loading ? (
-          <div className="text-center text-gray-500">Đang tải...</div>
-        ) : balanceChartData ? (
-          <BalanceLineChart chartData={balanceChartData} />
-        ) : (
-          <div className="text-center text-gray-400">
-            Không có dữ liệu biểu đồ.
-          </div>
-        )}
-      </div>
-
-      <div className="bg-white rounded-t-3xl shadow-lg mt-4">
-        {/* Tabs Chi tiêu/Biểu đồ */}
-        <div className="flex border-b">
+      <div className="sticky top-0 z-20 bg-gray-50/95 backdrop-blur border-b">
+        <div className="flex items-center justify-between p-4">
           <button
-            className={`flex-1 py-3 font-semibold text-center ${
-              tab === "Chi tiêu"
-                ? "text-purple-600 border-b-2 border-purple-500"
-                : "text-gray-500"
-            }`}
-            onClick={() => setTab("Chi tiêu")}
+            onClick={() => navigate(-1)}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            Chi tiêu
+            <ChevronLeft className="h-6 w-6" />
           </button>
-          <button
-            className={`flex-1 py-3 font-semibold text-center ${
-              tab === "Biểu đồ"
-                ? "text-purple-600 border-b-2 border-purple-500"
-                : "text-gray-500"
-            }`}
-            onClick={() => setTab("Biểu đồ")}
-          >
-            Biểu đồ
-          </button>
+          <h1 className="text-lg font-semibold">Thống kê</h1>
+          <div className="w-10" />
         </div>
-        {/* Danh sách chi tiêu theo danh mục */}
-        {tab === "Chi tiêu" && (
-          <div>
-            <h3 className="text-md font-semibold my-3 px-4 text-gray-700">
-              Chi tiêu hôm nay theo danh mục
-              <span className="text-purple-600"> (Cá nhân)</span>
-            </h3>
-            {categoriesWithSpent.map((cat) => (
-              <div
-                key={cat._id}
-                className="flex items-center px-4 py-3 border-b last:border-b-0 bg-white mx-2 mb-1 rounded-lg shadow-sm"
-              >
-                <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 mr-3 text-2xl">
-                  {cat.icon || "📁"}
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium text-gray-800">{cat.name}</div>
-                  <div className="text-xs text-gray-400">
-                    Mức dự chi:{" "}
-                    {cat.limit
-                      ? cat.limit.toLocaleString() + " đ"
-                      : "Không giới hạn"}
+
+        {/* Tabs Cá nhân / Nhóm */}
+        <div className="px-4 pb-3">
+          <div className="bg-white rounded-full p-1 shadow-sm flex gap-1">
+            <button
+              className={cn(
+                "flex-1 py-1.5 text-sm font-medium rounded-full transition-all",
+                isPersonal
+                  ? "bg-purple-100 text-purple-700 shadow"
+                  : "text-gray-500 hover:bg-gray-100"
+              )}
+              onClick={() => setMainTab("Cá nhân")}
+            >
+              Cá nhân
+            </button>
+            <button
+              className={cn(
+                "flex-1 py-1.5 text-sm font-medium rounded-full transition-all",
+                !isPersonal
+                  ? "bg-blue-100 text-blue-700 shadow"
+                  : "text-gray-500 hover:bg-gray-100"
+              )}
+              onClick={() => setMainTab("Nhóm")}
+            >
+              Nhóm
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Line chart card */}
+      <div className="px-4 mt-3">
+        <div className="bg-white rounded-2xl shadow-sm p-4">
+          <div className="mb-3 text-center">
+            <p className="text-xs text-gray-500">
+              {isPersonal
+                ? "Biến động số dư cá nhân hôm nay"
+                : "Biến động quỹ nhóm hôm nay"}
+            </p>
+          </div>
+          {loading ? (
+            <div className="text-center text-gray-500 py-10">Đang tải...</div>
+          ) : balanceChartData ? (
+            <BalanceLineChart chartData={balanceChartData} />
+          ) : (
+            <div className="text-center text-gray-400 py-10">
+              Không có dữ liệu biểu đồ.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Card dưới: Chi tiêu / Biểu đồ */}
+      <div className="mt-4 mx-0">
+        <div className="bg-white rounded-t-3xl shadow-lg pt-3 pb-24">
+          {/* Inner tabs: Chi tiêu / Biểu đồ */}
+          <div className="flex justify-between px-4 border-b">
+            <button
+              className={cn(
+                "pb-3 px-4 text-sm font-medium",
+                tab === "Chi tiêu"
+                  ? "text-purple-600 border-b-2 border-purple-500"
+                  : "text-gray-500"
+              )}
+              onClick={() => setTab("Chi tiêu")}
+            >
+              Chi tiêu
+            </button>
+            <button
+              className={cn(
+                "pb-3 px-4 text-sm font-medium",
+                tab === "Biểu đồ"
+                  ? "text-purple-600 border-b-2 border-purple-500"
+                  : "text-gray-500"
+              )}
+              onClick={() => setTab("Biểu đồ")}
+            >
+              Biểu đồ
+            </button>
+          </div>
+
+          {/* Tab Chi tiêu */}
+          {tab === "Chi tiêu" && (
+            <div className="px-4 mt-3 space-y-2">
+              <h3 className="text-sm font-medium text-gray-800 mb-3">
+                Chi tiêu hôm nay theo danh mục{" "}
+                <span
+                  className={isPersonal ? "text-purple-600" : "text-blue-600"}
+                >
+                  ({isPersonal ? "Cá nhân" : "Nhóm"})
+                </span>
+              </h3>
+
+              {categoriesWithSpent.map((cat) => (
+                <div
+                  key={cat._id}
+                  className="flex items-center justify-between py-3 border-b last:border-b-0"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-2xl">
+                      {cat.icon || "📁"}
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-800">
+                        {cat.name}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        Mức dự chi:{" "}
+                        {cat.limit
+                          ? `${cat.limit.toLocaleString()} đ`
+                          : "Không giới hạn"}
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    className={cn(
+                      "font-semibold text-sm",
+                      cat.spent > 0 ? "text-red-600" : "text-gray-500"
+                    )}
+                  >
+                    {cat.spent > 0 ? "-" : ""}
+                    {cat.spent ? cat.spent.toLocaleString() : 0} đ
                   </div>
                 </div>
-                <div
-                  className={`font-semibold ${
-                    cat.spent > 0 ? "text-red-600" : "text-gray-700"
-                  }`}
-                >
-                  {cat.spent > 0 ? "-" : ""}
-                  {cat.spent ? cat.spent.toLocaleString() : 0} đ
+              ))}
+
+              {categoriesWithSpent.length === 0 && (
+                <div className="text-center text-xs text-gray-400 py-6">
+                  Không có dữ liệu chi tiêu hôm nay.
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {/* Tab "Biểu đồ" dùng dữ liệu từ API */}
-        {tab === "Biểu đồ" && (
-          <div className="bg-gradient-to-b from-blue-100 to-purple-100 rounded-3xl p-4">
-            {/* Tháng này */}
-            <div className="mb-6">
-              <div className="font-semibold text-center mb-2">
-                Chi tiêu tháng {now.getMonth() + 1}-{now.getFullYear()} (
-                {pieSummaryThisMonth?.total?.toLocaleString() || 0} đ)
-              </div>
-              <div className="flex flex-col md:flex-row items-center gap-4">
-                <div className="w-40 h-40">
-                  {pieDataThisMonth && (
-                    <Pie
-                      data={pieDataThisMonth}
-                      options={{ plugins: { legend: { display: false } } }}
-                    />
-                  )}
+              )}
+            </div>
+          )}
+
+          {/* Tab Biểu đồ */}
+          {tab === "Biểu đồ" && (
+            <div className="px-4 mt-3 space-y-5">
+              {/* Tháng này */}
+              <div className="bg-gradient-to-b from-blue-50 to-purple-50 rounded-2xl p-4">
+                <div className="font-semibold text-center mb-3 text-sm">
+                  Chi tiêu tháng {now.getMonth() + 1}-{now.getFullYear()} (
+                  {pieSummaryThisMonth?.total?.toLocaleString() || 0} đ)
                 </div>
-                <div>
-                  {pieSummaryThisMonth?.summary.map((item, idx) => (
-                    <div
-                      key={item.category_id}
-                      className="flex items-center gap-2 text-sm mb-1"
-                    >
-                      <span
-                        className="inline-block w-3 h-3 rounded-full"
-                        style={{
-                          background: pieColors[idx % pieColors.length],
+                <div className="flex flex-col md:flex-row items-center gap-4">
+                  <div className="w-40 h-40 mx-auto">
+                    {pieDataThisMonth ? (
+                      <Pie
+                        data={pieDataThisMonth}
+                        options={{
+                          plugins: { legend: { display: false } },
+                          maintainAspectRatio: false,
                         }}
-                      ></span>
-                      <span>
-                        {item.total ? (item.total / 1e6).toFixed(3) : 0} M -{" "}
-                        {item.category_name}
-                      </span>
-                    </div>
-                  ))}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-xs text-gray-400">
+                        Không có dữ liệu
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-xs space-y-1">
+                    {pieSummaryThisMonth?.summary.map((item, idx) => (
+                      <div
+                        key={item.category_id}
+                        className="flex items-center gap-2"
+                      >
+                        <span
+                          className="inline-block w-3 h-3 rounded-full"
+                          style={{
+                            background: pieColors[idx % pieColors.length],
+                          }}
+                        ></span>
+                        <span>
+                          {item.total ? (item.total / 1e6).toFixed(3) : 0} M -{" "}
+                          {item.category_name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tháng trước */}
+              <div className="bg-gradient-to-b from-slate-50 to-gray-50 rounded-2xl p-4 mb-4">
+                <div className="font-semibold text-center mb-3 text-sm">
+                  Chi tiêu tháng {lastMonth.getMonth() + 1}-
+                  {lastMonth.getFullYear()} (
+                  {pieSummaryLastMonth?.total?.toLocaleString() || 0} đ)
+                </div>
+                <div className="flex flex-col md:flex-row items-center gap-4">
+                  <div className="w-40 h-40 mx-auto">
+                    {pieDataLastMonth ? (
+                      <Pie
+                        data={pieDataLastMonth}
+                        options={{
+                          plugins: { legend: { display: false } },
+                          maintainAspectRatio: false,
+                        }}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-xs text-gray-400">
+                        Không có dữ liệu
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-xs space-y-1">
+                    {pieSummaryLastMonth?.summary.map((item, idx) => (
+                      <div
+                        key={item.category_id}
+                        className="flex items-center gap-2"
+                      >
+                        <span
+                          className="inline-block w-3 h-3 rounded-full"
+                          style={{
+                            background: pieColors[idx % pieColors.length],
+                          }}
+                        ></span>
+                        <span>
+                          {item.total ? (item.total / 1e6).toFixed(3) : 0} M -{" "}
+                          {item.category_name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-            {/* Tháng trước */}
-            <div>
-              <div className="font-semibold text-center mb-2">
-                Chi tiêu tháng {lastMonth.getMonth() + 1}-
-                {lastMonth.getFullYear()} (
-                {pieSummaryLastMonth?.total?.toLocaleString() || 0} đ)
-              </div>
-              <div className="flex flex-col md:flex-row items-center gap-4">
-                <div className="w-40 h-40">
-                  {pieDataLastMonth && (
-                    <Pie
-                      data={pieDataLastMonth}
-                      options={{ plugins: { legend: { display: false } } }}
-                    />
-                  )}
-                </div>
-                <div>
-                  {pieSummaryLastMonth?.summary.map((item, idx) => (
-                    <div
-                      key={item.category_id}
-                      className="flex items-center gap-2 text-sm mb-1"
-                    >
-                      <span
-                        className="inline-block w-3 h-3 rounded-full"
-                        style={{
-                          background: pieColors[idx % pieColors.length],
-                        }}
-                      ></span>
-                      <span>
-                        {item.total ? (item.total / 1e6).toFixed(3) : 0} M -{" "}
-                        {item.category_name}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-      <div className="font-semibold text-center py-2">
-        Tổng chi tiêu hôm nay:{" "}
-        {categoriesWithSpent
-          .reduce((sum, cat) => sum + cat.spent, 0)
-          .toLocaleString()}
-        đ
+
+      {/* Tổng chi tiêu hôm nay */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-sm py-3 px-4">
+        <div className="text-center">
+          <span className="text-sm text-gray-500">
+            Tổng chi tiêu hôm nay ({isPersonal ? "cá nhân" : "nhóm"}):{" "}
+          </span>
+          <span className="text-lg font-bold text-red-600">
+            {totalToday.toLocaleString()} đ
+          </span>
+        </div>
       </div>
     </div>
   );

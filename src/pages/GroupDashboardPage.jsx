@@ -48,7 +48,9 @@ export default function GroupDashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const resGroup = await fetch(`http://localhost:3000/api/auth/${groupId}`);
+      const resGroup = await fetch(
+        `http://localhost:3000/api/group/${groupId}`
+      );
       if (!resGroup.ok) {
         const errorData = await resGroup.json().catch(() => ({}));
         throw new Error(
@@ -59,7 +61,7 @@ export default function GroupDashboardPage() {
       const groupDetails = await resGroup.json();
 
       const resActualBalance = await fetch(
-        `http://localhost:3000/api/auth/groups/${groupId}/actual-balance`
+        `http://localhost:3000/api/group/groups/${groupId}/actual-balance`
       );
       if (!resActualBalance.ok) {
         const balanceErrorData = await resActualBalance

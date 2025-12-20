@@ -75,7 +75,7 @@ const RecordModal = ({
   const [paymentMethod, setPaymentMethod] = useState("personalFund");
   const [loggedInUser, setLoggedInUser] = useState(null);
 
-  // Group-related states (kept but minimal)
+  // Group-related states
   const [availableGroups, setAvailableGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [selectedGroupActualBalance, setSelectedGroupActualBalance] =
@@ -84,6 +84,7 @@ const RecordModal = ({
   const [fundIdForCategorization, setFundIdForCategorization] = useState("");
   const [categorizationFundName, setCategorizationFundName] = useState("");
 
+  // Tab: user / category
   const [tabValue, setTabValue] = useState("category");
 
   useEffect(() => {
@@ -93,7 +94,7 @@ const RecordModal = ({
       setLoggedInUser(parsedUser);
 
       axios
-        .get(`http://localhost:3000/api/auth/groups?userId=${parsedUser._id}`)
+        .get(`http://localhost:3000/api/group/groups?userId=${parsedUser._id}`)
         .then((res) => setAvailableGroups(res.data.groups || []))
         .catch(() => setAvailableGroups([]));
     }
@@ -109,12 +110,13 @@ const RecordModal = ({
     if (selectedCategoryId) setCategory(selectedCategoryId);
   }, [selectedCategoryId]);
 
+  // Khi chọn nhóm hoặc đổi phương thức thanh toán
   useEffect(() => {
     if (selectedGroupId && paymentMethod === "groupFund") {
       setLoadingGroupBalance(true);
       axios
         .get(
-          `http://localhost:3000/api/auth/groups/${selectedGroupId}/actual-balance`
+          `http://localhost:3000/api/group/groups/${selectedGroupId}/actual-balance`
         )
         .then((res) => setSelectedGroupActualBalance(res.data.balance || 0))
         .catch(() => setSelectedGroupActualBalance(0))
@@ -122,7 +124,7 @@ const RecordModal = ({
 
       axios
         .get(
-          `http://localhost:3000/api/auth/group-funds?groupId=${selectedGroupId}`
+          `http://localhost:3000/api/group/group-funds?groupId=${selectedGroupId}`
         )
         .then((res) => {
           const funds = res.data.funds || [];
@@ -178,7 +180,7 @@ const RecordModal = ({
 
     try {
       if (paymentMethod === "personalFund") {
-        await axios.post("http://localhost:3000/api/auth/Withdraw", {
+        await axios.post("http://localhost:3000/api/withdraw", {
           user_id: loggedInUser._id,
           amount: transactionAmount,
           category_id: category,
@@ -207,7 +209,7 @@ const RecordModal = ({
           return;
         }
 
-        await axios.post("http://localhost:3000/api/auth/group-expenses", {
+        await axios.post("http://localhost:3000/api/group/group-expenses", {
           fund_id: fundIdForCategorization,
           user_making_expense_id: loggedInUser._id,
           date: format(date, "yyyy-MM-dd"),
@@ -255,7 +257,7 @@ const RecordModal = ({
       <div
         className="w-full max-w-sm mx-4 rounded-2xl p-6 shadow-xl animate-scale-in bg-white"
         style={{
-          maxHeight: "80%", // Giới hạn chiều cao của modal để không chiếm quá nhiều không gian
+          maxHeight: "80%",
           overflowY: "auto",
         }}
       >
@@ -276,7 +278,7 @@ const RecordModal = ({
           </Button>
         </div>
 
-        {/* Phương thức và các thông tin khác */}
+        {/* Phương thức */}
         <div className="mb-4">
           <Label>Phương thức</Label>
           <select
@@ -293,51 +295,151 @@ const RecordModal = ({
           </select>
         </div>
 
-        {/* Danh mục */}
-        <div className="mb-4">
-          <Label className="mb-3">Danh mục</Label>
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {categories.map((cat) => {
-              const IconComp = iconMap[cat.name] || Calculator;
-              const gradient =
-                gradientMap[cat.name] || "from-gray-300 to-gray-400";
-              const isSelected = category === cat._id;
-              return (
-                <button
-                  key={cat._id}
-                  onClick={() => handleCategoryClick(cat._id)}
-                  className={cn(
-                    "flex-shrink-0 flex flex-col items-center gap-2",
-                    "focus:outline-none"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-gradient-to-br",
-                      gradient,
-                      isSelected
-                        ? "scale-105 shadow-glow"
-                        : "opacity-80 hover:opacity-100 hover:scale-105"
-                    )}
-                  >
-                    <IconComp
-                      className="w-7 h-7 text-white"
-                      strokeWidth={2.5}
-                    />
-                  </div>
-                  <span
-                    className={cn(
-                      "text-xs font-medium",
-                      isSelected ? "text-primary" : "text-muted-foreground"
-                    )}
-                  >
-                    {cat.name}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        {/* Tabs: Người sử dụng / Danh mục */}
+        <div className="flex justify-center gap-3 mb-4">
+          <button
+            className={cn(
+              "px-4 py-1 rounded-full text-xs font-medium",
+              tabValue === "user"
+                ? "bg-indigo-100 text-indigo-700"
+                : "bg-gray-100 text-gray-600"
+            )}
+            onClick={() => setTabValue("user")}
+          >
+            {paymentMethod === "groupFund" ? "Chọn nhóm" : "Người sử dụng"}
+          </button>
+          <button
+            className={cn(
+              "px-4 py-1 rounded-full text-xs font-medium",
+              tabValue === "category"
+                ? "bg-indigo-100 text-indigo-700"
+                : "bg-gray-100 text-gray-600"
+            )}
+            onClick={() => setTabValue("category")}
+          >
+            Danh mục
+          </button>
         </div>
+
+        {/* Tab: Người sử dụng / Nhóm */}
+        {tabValue === "user" && (
+          <div className="mb-4">
+            {paymentMethod === "personalFund" && loggedInUser ? (
+              <>
+                <p className="text-xs text-gray-600 mb-2">
+                  Thực hiện bởi (Cá nhân)
+                </p>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-indigo-50">
+                  <img
+                    src={loggedInUser.avatar || avatarDefault}
+                    alt={loggedInUser.name}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-indigo-700">
+                      {loggedInUser.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {loggedInUser.email}
+                    </p>
+                  </div>
+                </div>
+              </>
+            ) : paymentMethod === "groupFund" ? (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-gray-600">
+                  Chi tiêu từ tài khoản nhóm
+                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-gray-600">Nhóm</span>
+                  <select
+                    value={selectedGroupId}
+                    onChange={(e) => setSelectedGroupId(e.target.value)}
+                    className="text-xs w-2/3 glass-card border border-gray-200 p-2 rounded-md"
+                    disabled={availableGroups.length === 0}
+                  >
+                    <option value="">-- Chọn nhóm --</option>
+                    {availableGroups.map((group) => (
+                      <option key={group._id} value={group._id}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedGroupId && (
+                  <>
+                    <div className="text-xs text-gray-500">
+                      Số dư tài khoản nhóm:{" "}
+                      {loadingGroupBalance ? (
+                        "Đang tải..."
+                      ) : (
+                        <span className="font-semibold text-indigo-600">
+                          {selectedGroupActualBalance.toLocaleString()} đ
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-400">
+                      (Chi tiêu sẽ được phân loại vào quỹ:{" "}
+                      <span className="italic">
+                        {categorizationFundName || "Chưa xác định"}
+                      </span>
+                      )
+                    </p>
+                  </>
+                )}
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {/* Tab: Danh mục */}
+        {tabValue === "category" && (
+          <div className="mb-4">
+            <Label className="mb-3">Danh mục</Label>
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {categories.map((cat) => {
+                const IconComp = iconMap[cat.name] || Calculator;
+                const gradient =
+                  gradientMap[cat.name] || "from-gray-300 to-gray-400";
+                const isSelected = category === cat._id;
+                return (
+                  <button
+                    key={cat._id}
+                    onClick={() => handleCategoryClick(cat._id)}
+                    className={cn(
+                      "flex-shrink-0 flex flex-col items-center gap-2",
+                      "focus:outline-none"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "w-14 h-14 rounded-2xl flex items-center justify-center transition-all bg-gradient-to-br",
+                        gradient,
+                        isSelected
+                          ? "scale-105 shadow-glow"
+                          : "opacity-80 hover:opacity-100 hover:scale-105"
+                      )}
+                    >
+                      <IconComp
+                        className="w-7 h-7 text-white"
+                        strokeWidth={2.5}
+                      />
+                    </div>
+                    <span
+                      className={cn(
+                        "text-xs font-medium",
+                        isSelected ? "text-primary" : "text-muted-foreground"
+                      )}
+                    >
+                      {cat.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Số tiền */}
         <div className="mb-4">
