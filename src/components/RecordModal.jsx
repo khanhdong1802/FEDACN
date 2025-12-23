@@ -153,10 +153,23 @@ const RecordModal = ({
     }
   }, [selectedGroupId, paymentMethod]);
 
+  const getAmountSuggestions = () => {
+    if (!amount || isNaN(amount) || amount <= 0) return [];
+    const num = parseInt(amount.replace(/,/g, ""));
+    return [num * 1000, num * 10000, num * 100000].filter((s) => s <= 10000000);
+  };
+
+  const formatNumber = (value) => {
+    if (!value) return "";
+    const num = value.replace(/,/g, "");
+    if (isNaN(num)) return value;
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
   const handleCategoryClick = (id) => setCategory(id);
 
   const handleSaveTransaction = async () => {
-    if (!amount || Number(amount) <= 0) {
+    if (!amount || Number(amount.replace(/,/g, "")) <= 0) {
       alert("Vui lòng nhập số tiền hợp lệ!");
       return;
     }
@@ -169,7 +182,7 @@ const RecordModal = ({
       return;
     }
 
-    const transactionAmount = Number(amount);
+    const transactionAmount = Number(amount.replace(/,/g, ""));
     const selectedCategoryObj = categories.find((cat) => cat._id === category);
     const categoryName = selectedCategoryObj
       ? selectedCategoryObj.name
@@ -240,7 +253,7 @@ const RecordModal = ({
           transactionType
         );
       }
-      alert("Ghi chép thành công!");
+
       onClose();
     } catch (err) {
       const errorMessage =
@@ -446,15 +459,40 @@ const RecordModal = ({
           <Label>Số tiền</Label>
           <div className="relative mt-2">
             <Input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              type="text"
+              value={formatNumber(amount)}
+              onChange={(e) => {
+                const rawValue = e.target.value.replace(/,/g, "");
+                if (!isNaN(rawValue) || rawValue === "") {
+                  setAmount(rawValue);
+                }
+              }}
               placeholder="Nhập số tiền"
               className="glass-card border-none pr-8"
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
               đ
             </span>
+            {amount && getAmountSuggestions().length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                <div className="p-2">
+                  <p className="text-xs text-gray-500 mb-2">Gợi ý số tiền:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {getAmountSuggestions().map((amt) => (
+                      <button
+                        key={amt}
+                        onClick={() => {
+                          setAmount(amt.toString());
+                        }}
+                        className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                      >
+                        {amt.toLocaleString()} đ
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

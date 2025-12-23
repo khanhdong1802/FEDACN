@@ -56,6 +56,13 @@ export default function SpendingLimitModal({ userId, onClose }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  const formatNumber = (value) => {
+    if (!value) return '';
+    const num = value.toString().replace(/,/g, '');
+    if (isNaN(num)) return value;
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
+
   const handleSuggestAmount = (value) => setAmount(value);
   const handleSuggestMonths = (value) => setMonths(value);
 
@@ -96,7 +103,7 @@ export default function SpendingLimitModal({ userId, onClose }) {
 
   const quickAmounts = suggestedAmounts.map((v) => ({
     value: v,
-    label: v.toLocaleString(),
+    label: formatNumber(v),
   }));
 
   const durations = suggestedDurations.map((m) => ({
@@ -141,9 +148,14 @@ export default function SpendingLimitModal({ userId, onClose }) {
             <Label>Số tiền hạn mức</Label>
             <div className="relative">
               <Input
-                type="number"
-                value={amount || ""}
-                onChange={(e) => setAmount(Number(e.target.value))}
+                type="text"
+                value={formatNumber(amount)}
+                onChange={(e) => {
+                  const rawValue = e.target.value.replace(/,/g, '');
+                  if (!isNaN(rawValue) || rawValue === '') {
+                    setAmount(rawValue === '' ? 0 : Number(rawValue));
+                  }
+                }}
                 placeholder="0"
                 className="text-lg pr-10 text-right"
               />

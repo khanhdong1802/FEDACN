@@ -120,6 +120,19 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
     }
   }, [selectedGroupId, mode]);
 
+  const getAmountSuggestions = () => {
+    if (!amount || isNaN(amount) || amount <= 0) return [];
+    const num = parseInt(amount.replace(/,/g, ""));
+    return [num * 1000, num * 10000, num * 100000].filter((s) => s <= 10000000);
+  };
+
+  const formatNumber = (value) => {
+    if (!value) return "";
+    const num = value.replace(/,/g, "");
+    if (isNaN(num)) return value;
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
   const handleAddFund = async () => {
     if (!newFundName.trim() || !selectedGroupId) return;
     try {
@@ -149,7 +162,7 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
   };
 
   const handleSave = async () => {
-    const numericAmount = Number(amount);
+    const numericAmount = Number(amount.replace(/,/g, ""));
     if (
       !numericAmount ||
       numericAmount <= 0 ||
@@ -300,15 +313,38 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
             <Label>Số tiền</Label>
             <div className="relative">
               <Input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                type="text"
+                value={formatNumber(amount)}
+                onChange={(e) => {
+                  const rawValue = e.target.value.replace(/,/g, "");
+                  if (!isNaN(rawValue) || rawValue === "") {
+                    setAmount(rawValue);
+                  }
+                }}
                 placeholder="0"
                 className="pr-10 text-right"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
                 đ
               </span>
+              {amount && getAmountSuggestions().length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                  <div className="p-2">
+                    <p className="text-xs text-gray-500 mb-2">Gợi ý số tiền:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {getAmountSuggestions().map((amt) => (
+                        <button
+                          key={amt}
+                          onClick={() => setAmount(amt.toString())}
+                          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                        >
+                          {amt.toLocaleString()} đ
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

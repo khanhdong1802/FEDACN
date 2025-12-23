@@ -217,11 +217,6 @@ export default function DashboardPage() {
                               <span className="italic">{tx.description}</span>
                             </>
                           )}
-                        {tx.status && (
-                          <>
-                            {" | "}Trạng thái: {tx.status}
-                          </>
-                        )}
                       </div>
                     </div>
                   </div>

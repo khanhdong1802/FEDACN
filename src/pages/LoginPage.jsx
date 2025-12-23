@@ -36,7 +36,6 @@ export default function LoginPage() {
         localStorage.setItem("isAdmin", "false");
       }
 
-      alert(message || "Đăng nhập thành công");
       localStorage.setItem("token", accessToken);
       localStorage.setItem("user", JSON.stringify(user));
 

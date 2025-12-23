@@ -197,56 +197,79 @@ export default function GroupDashboardPage() {
           <h2 className="text-lg font-bold mb-4 text-gray-800">
             Lịch sử giao dịch nhóm
           </h2>
+
           <div className="space-y-3">
-            {groupTransactionHistory.slice(0, visibleCount).map((tx) => (
-              <div
-                key={tx._id}
-                className="flex items-start gap-3 p-4 rounded-lg shadow-sm bg-white border border-gray-100"
-              >
+            {groupTransactionHistory.slice(0, visibleCount).map((tx) => {
+              const isIncrease =
+                tx.transaction_type === "income" ||
+                tx.transaction_type === "contribution";
+
+              const isExpense = tx.transaction_type === "expense";
+
+              let iconBgClass = "bg-gray-400";
+              let iconSign = "";
+              let amountColorClass = "text-gray-700";
+              let amountPrefix = "";
+
+              if (isIncrease) {
+                // TĂNG QUỸ NHÓM
+                iconBgClass = "bg-gradient-to-r from-emerald-500 to-teal-500";
+                iconSign = "+";
+                amountColorClass = "text-green-600";
+                amountPrefix = "+ ";
+              } else if (isExpense) {
+                // GIẢM QUỸ NHÓM
+                iconBgClass = "bg-gradient-to-r from-rose-500 to-pink-500";
+                iconSign = "-";
+                amountColorClass = "text-red-600";
+                amountPrefix = "- ";
+              }
+
+              return (
                 <div
-                  className={`w-10 h-10 flex items-center justify-center rounded-full text-white ${
-                    tx.transaction_type === "expense"
-                      ? "bg-red-500"
-                      : "bg-green-500"
-                  }`}
+                  key={tx._id}
+                  className="flex items-start gap-3 p-4 rounded-lg shadow-sm bg-white border border-gray-100"
                 >
-                  {tx.transaction_type === "expense" ? "-" : "+"}
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-gray-800 capitalize">
-                      {tx.transaction_type}
-                    </span>
-                    <span
-                      className={`font-semibold ${
-                        tx.transaction_type === "expense"
-                          ? "text-red-600"
-                          : "text-green-600"
-                      }`}
-                    >
-                      {tx.transaction_type === "expense" ? "-" : "+"}{" "}
-                      {tx.amount.toLocaleString()} đ
-                    </span>
+                  {/* Button + / - */}
+                  <div
+                    className={`w-10 h-10 flex items-center justify-center rounded-full text-white font-bold ${iconBgClass}`}
+                  >
+                    {iconSign}
                   </div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    Ngày:{" "}
-                    {tx.transaction_date
-                      ? new Date(tx.transaction_date).toLocaleDateString(
-                          "vi-VN"
-                        )
-                      : ""}
-                    {tx.description && (
-                      <>
-                        {" | "}Ghi chú:{" "}
-                        <span className="italic">{tx.description}</span>
-                      </>
-                    )}
-                    {tx.status && <> | Trạng thái: {tx.status}</>}
+
+                  {/* Nội dung */}
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-800 capitalize">
+                        {tx.transaction_type}
+                      </span>
+                      <span className={`font-semibold ${amountColorClass}`}>
+                        {amountPrefix}
+                        {tx.amount.toLocaleString()} đ
+                      </span>
+                    </div>
+
+                    <div className="text-sm text-gray-500 mt-1">
+                      Ngày:{" "}
+                      {tx.transaction_date
+                        ? new Date(tx.transaction_date).toLocaleDateString(
+                            "vi-VN"
+                          )
+                        : ""}
+                      {tx.description && (
+                        <>
+                          {" | "}Ghi chú:{" "}
+                          <span className="italic">{tx.description}</span>
+                        </>
+                      )}
+                      {tx.status && <> | Trạng thái: {tx.status}</>}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
+
           {/* Nút "Xem thêm" và "Thu gọn" nằm trong khối này */}
           {visibleCount < groupTransactionHistory.length && (
             <div className="text-center mt-4">
