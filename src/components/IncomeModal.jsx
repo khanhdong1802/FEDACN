@@ -46,6 +46,8 @@ const Button = ({ children, className = "", ...props }) => (
   </button>
 );
 
+const suggestedAmounts = [1000000, 3000000, 6000000, 12000000];
+
 // Đảm bảo IncomeModal nhận prop onIncomeSuccess từ FloatingButton
 const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
   const [mode, setMode] = useState("personal");
@@ -120,18 +122,19 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
     }
   }, [selectedGroupId, mode]);
 
-  const getAmountSuggestions = () => {
-    if (!amount || isNaN(amount) || amount <= 0) return [];
-    const num = parseInt(amount.replace(/,/g, ""));
-    return [num * 1000, num * 10000, num * 100000].filter((s) => s <= 10000000);
-  };
-
   const formatNumber = (value) => {
     if (!value) return "";
     const num = value.replace(/,/g, "");
     if (isNaN(num)) return value;
     return num.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
+
+  const handleSuggestAmount = (value) => setAmount(value.toString());
+
+  const quickAmounts = suggestedAmounts.map((v) => ({
+    value: v,
+    label: formatNumber(v),
+  }));
 
   const handleAddFund = async () => {
     if (!newFundName.trim() || !selectedGroupId) return;
@@ -327,25 +330,26 @@ const IncomeModal = ({ onClose, onSuccess, groupId, onIncomeSuccess }) => {
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
                 đ
               </span>
-              {amount && getAmountSuggestions().length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                  <div className="p-2">
-                    <p className="text-xs text-gray-500 mb-2">Gợi ý số tiền:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {getAmountSuggestions().map((amt) => (
-                        <button
-                          key={amt}
-                          onClick={() => setAmount(amt.toString())}
-                          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-                        >
-                          {amt.toLocaleString()} đ
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
+          </div>
+
+          {/* Quick amount buttons */}
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+            {quickAmounts.map((item) => (
+              <button
+                key={item.value}
+                onClick={() => handleSuggestAmount(item.value)}
+                className={cn(
+                  "flex-shrink-0 px-4 py-2 rounded-full transition-colors bg-purple-50 hover:bg-purple-100",
+                  amount === item.value.toString() && "bg-purple-100 shadow-sm"
+                )}
+              >
+                <span className="text-sm font-medium text-purple-700">
+                  {item.label}
+                </span>
+                <span className="text-xs text-purple-700 ml-1">đ</span>
+              </button>
+            ))}
           </div>
 
           {/* Nguồn thu */}
